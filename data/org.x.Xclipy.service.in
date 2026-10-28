@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.x.Xclipy
+Exec=@bindir@/xclipy --background

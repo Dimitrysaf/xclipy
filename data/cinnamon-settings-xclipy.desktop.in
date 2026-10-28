@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Clipboard
+Comment=Clipboard history and emoji
+Exec=cinnamon-settings xclipy
+Icon=xclipy
+Terminal=false
+OnlyShowIn=X-Cinnamon;
+Categories=Settings;
+Keywords=clipboard;history;copy;paste;emoji;

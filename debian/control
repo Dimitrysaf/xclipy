@@ -1,0 +1,38 @@
+Source: xclipy
+Section: utils
+Priority: optional
+Maintainer: Dimitrysaf <demetresmeliates+github@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-sequence-python3,
+ gettext,
+ meson (>= 0.59.0),
+ gtk-update-icon-cache,
+ libglib2.0-bin,
+ python3,
+ python3-gi,
+ gir1.2-gtk-3.0
+Standards-Version: 4.6.2
+Homepage: https://github.com/dimitrysaf/xclipy
+Rules-Requires-Root: no
+
+Package: xclipy
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+ cinnamon,
+ gir1.2-atspi-2.0,
+ gir1.2-gtk-3.0,
+ gir1.2-secret-1,
+ gir1.2-wnck-3.0,
+ python3-gi,
+ python3-xapp,
+ xdotool,
+ xapps-common
+Recommends:
+ fonts-noto-color-emoji
+Description: Clipboard history for the Cinnamon desktop
+ Xclipy keeps what you copy and opens it, with an emoji picker, in an
+ overlay under the text cursor when its keyboard shortcut is pressed.
+ Its settings are in Cinnamon's System Settings.

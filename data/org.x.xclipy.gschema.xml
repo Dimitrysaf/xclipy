@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.x.xclipy" path="/org/x/xclipy/">
+    <key name="enabled" type="b">
+      <default>true</default>
+    </key>
+    <key name="history-size" type="i">
+      <range min="1" max="200"/>
+      <default>20</default>
+    </key>
+    <key name="paste-on-select" type="b">
+      <default>true</default>
+    </key>
+    <key name="show-search" type="b">
+      <default>false</default>
+    </key>
+    <key name="show-item-types" type="b">
+      <default>true</default>
+    </key>
+    <key name="store-images" type="b">
+      <default>false</default>
+    </key>
+    <key name="clear-on-logout" type="b">
+      <default>true</default>
+    </key>
+    <key name="delete-old-items" type="b">
+      <default>false</default>
+    </key>
+    <key name="delete-old-days" type="i">
+      <range min="1" max="365"/>
+      <default>7</default>
+    </key>
+    <key name="hide-passwords" type="b">
+      <default>true</default>
+    </key>
+    <key name="recognise-random-passwords" type="b">
+      <default>true</default>
+    </key>
+    <key name="clear-pasted-passwords" type="b">
+      <default>true</default>
+    </key>
+    <key name="forget-passwords" type="b">
+      <default>true</default>
+    </key>
+    <key name="forget-passwords-minutes" type="i">
+      <range min="1" max="120"/>
+      <default>1</default>
+    </key>
+    <key name="save-pinned-passwords" type="b">
+      <default>false</default>
+    </key>
+    <key name="excluded-apps" type="as">
+      <default>[]</default>
+    </key>
+    <key name="emoji-skin-tone" type="s">
+      <choices>
+        <choice value="none"/>
+        <choice value="light"/>
+        <choice value="medium-light"/>
+        <choice value="medium"/>
+        <choice value="medium-dark"/>
+        <choice value="dark"/>
+      </choices>
+      <default>"none"</default>
+    </key>
+    <key name="recent-emoji" type="as">
+      <default>[]</default>
+    </key>
+    <key name="shortcut-added" type="b">
+      <default>false</default>
+    </key>
+    <key name="emoji-shortcut-added" type="b">
+      <default>false</default>
+    </key>
+  </schema>
+</schemalist>

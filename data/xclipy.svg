@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb15e"/>
+      <stop offset="1" stop-color="#f0812b"/>
+    </linearGradient>
+  </defs>
+  <!-- The tile, with a soft shadow under it, like Mint-Y's settings icons. -->
+  <rect x="18" y="21" width="220" height="220" rx="46" fill="#000" opacity="0.18"/>
+  <rect x="18" y="18" width="220" height="220" rx="46" fill="url(#tile)"/>
+  <!-- A clipboard: the board, its clip and three lines of text. -->
+  <rect x="70" y="66" width="116" height="138" rx="14" fill="none" stroke="#fff" stroke-width="16"/>
+  <rect x="98" y="46" width="60" height="36" rx="10" fill="#fff"/>
+  <circle cx="128" cy="58" r="6" fill="#f7983f"/>
+  <rect x="94" y="110" width="68" height="13" rx="6.5" fill="#fff"/>
+  <rect x="94" y="136" width="68" height="13" rx="6.5" fill="#fff"/>
+  <rect x="94" y="162" width="42" height="13" rx="6.5" fill="#fff"/>
+</svg>

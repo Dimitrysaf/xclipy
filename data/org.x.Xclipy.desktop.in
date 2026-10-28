@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Clipboard History
+Comment=Paste something you copied earlier, or an emoji
+Exec=xclipy --show
+Icon=xclipy
+Terminal=false
+NoDisplay=true
+OnlyShowIn=X-Cinnamon;
+Categories=Utility;
+Keywords=clipboard;history;copy;paste;emoji;

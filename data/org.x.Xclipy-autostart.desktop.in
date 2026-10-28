@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Clipboard History
+Comment=Keep the clipboard history
+Exec=@bindir@/xclipy --background
+Icon=xclipy
+Terminal=false
+NoDisplay=true
+OnlyShowIn=X-Cinnamon;
+X-GNOME-Autostart-enabled=true

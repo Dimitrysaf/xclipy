@@ -1,0 +1,17 @@
+#!/bin/bash
+# Update xclipy.pot, the template the translations in po/ are made from.
+set -eu
+cd "$(dirname "$0")"
+
+xgettext --language=Desktop --from-code=UTF-8 --output=xclipy.pot \
+  data/*.desktop.in
+xgettext --language=Python --join-existing --from-code=UTF-8 \
+  --keyword=_ --keyword=N_ --keyword=ngettext:1,2 --keyword=pgettext:1c,2 --add-comments=Translators: \
+  --package-name=xclipy --output=xclipy.pot \
+  $(find xclipy cinnamon-settings -name '*.py' -not -path '*/__pycache__/*' -not -name 'emoji_data.py' | sort)
+
+# The same files, for Meson's update-po target.
+{
+  ls data/*.desktop.in
+  find xclipy cinnamon-settings -name '*.py' -not -path '*/__pycache__/*' -not -name 'emoji_data.py' | sort
+} > po/POTFILES

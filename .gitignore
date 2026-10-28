@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+build/
+_build/
+po/*.mo
+po/*.gmo
+debian/.debhelper/
+debian/xclipy/
+debian/tmp/
+debian/files
+debian/*.substvars
+debian/*.debhelper.log
+debian/*debhelper*
+debian/xclipy
+*.deb
+*.buildinfo
+*.changes
