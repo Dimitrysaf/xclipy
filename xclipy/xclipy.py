@@ -75,14 +75,16 @@ class XclipyApplication(Gtk.Application):
         self.settings.connect("changed::enabled", self._on_enabled_changed)
         self.settings.connect("changed::save-pinned-passwords", lambda s, key: self.history.keep_pinned_passwords(
             Keyring() if s.get_boolean(key) else None))
-        # On Wayland, the helper in Cinnamon sees the copies, places the
-        # overlay and pastes; on X11 Xclipy does it all itself.
+        # The helper in Cinnamon places the overlay at the mouse pointer, on X11 and
+        # Wayland alike: the window manager itself, like a right-click menu. On
+        # Wayland it also sees the copies and pastes; on X11 Xclipy does those itself.
         self.wayland = is_wayland(Gdk.Display.get_default())
-        self.helper = None
+        self.placer = self.helper = None
         if "X-Cinnamon" in os.environ.get("XDG_CURRENT_DESKTOP", "").split(":"):
             enable_once(self.settings)
+            self.placer = CinnamonHelper()
             if self.wayland:
-                self.helper = CinnamonHelper()
+                self.helper = self.placer
         self.watcher = ClipboardWatcher(self.history, self.settings, self.helper)
         if self.helper is not None:
             self.helper.on_clipboard_changed = self.watcher.on_helper_copy
@@ -139,8 +141,8 @@ class XclipyApplication(Gtk.Application):
             # Asked now, while the application still has the keyboard focus.
             self._terminal = self.focus.in_terminal()
             self.overlay.popup(tab)
-            if self.helper is not None and self.helper.available:
-                self.helper.place_overlay()
+            if self.placer is not None and self.placer.available:
+                self.placer.place_overlay()
         elif self.overlay.tab != tab:
             self.overlay.switch_to(tab)
         else:

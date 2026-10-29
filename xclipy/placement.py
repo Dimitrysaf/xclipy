@@ -4,7 +4,7 @@ Only when there is no pointer position does it go to the bottom right corner of
 the screen. The Cinnamon helper places it the same way on Wayland.
 """
 
-GAP = 4      # between the mouse pointer and the overlay
+GAP = 1      # between the mouse pointer and the overlay, as for a right-click menu
 MARGIN = 12  # from the edges of the screen, without a pointer
 
 

@@ -16,7 +16,7 @@ const VERSION = 1;
 const OVERLAY_APP_ID = 'org.x.Xclipy';
 const OVERLAY_TITLE = 'Xclipy';
 // Where the overlay goes, as Xclipy places it on X11 (xclipy/placement.py).
-const GAP = 4;
+const GAP = 1;
 const MARGIN = 12;
 const HOLD_MS = 500;
 

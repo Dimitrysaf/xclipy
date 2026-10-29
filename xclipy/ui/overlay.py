@@ -21,13 +21,12 @@ WIDTH, HEIGHT = 360, 440
 # overlay only closes when the focus doesn't come back by then.
 FOCUS_LOST_MS = 200
 
+# The card is drawn as the theme draws a menu (Mint-Y: square, with a 1px border),
+# so its corners, border and background are the theme's; only a menu's outer margin
+# is dropped, as the window is exactly the card's size.
 CSS = b"""
 window.xclipy-overlay { background-color: transparent; }
-window.xclipy-overlay .xclipy-card {
-    background-color: @theme_bg_color;
-    border: 1px solid @borders;
-    border-radius: 8px;
-}
+window.xclipy-overlay .xclipy-card { margin: 0; }
 window.xclipy-overlay.xclipy-solid .xclipy-card { border-radius: 0; }
 .xclipy-emoji { font-size: 20px; }
 """
@@ -78,6 +77,7 @@ class Overlay(Gtk.Window):
             self.get_style_context().add_class("xclipy-solid")
 
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card.get_style_context().add_class("menu")
         card.get_style_context().add_class("xclipy-card")
         self.add(card)
 
@@ -114,8 +114,9 @@ class Overlay(Gtk.Window):
     def popup(self, tab="clipboard"):
         """Open on a tab ("clipboard" or "emoji") at the bottom right of the mouse pointer.
 
-        On Wayland an application can't place its windows or know where the pointer
-        is: the helper in Cinnamon places it the same way.
+        On X11 it moves itself there before it shows, so it doesn't appear elsewhere
+        first; the helper in Cinnamon then places it the same way, as the window
+        manager (on Wayland only the helper can: applications can't place windows).
         """
         display = self.get_display()
         if not is_wayland(display):
