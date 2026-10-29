@@ -6,5 +6,5 @@ Exec=@bindir@/xclipy --background
 Icon=xclipy
 Terminal=false
 NoDisplay=true
-OnlyShowIn=X-Cinnamon;
+OnlyShowIn=X-Cinnamon;MATE;XFCE;
 X-GNOME-Autostart-enabled=true

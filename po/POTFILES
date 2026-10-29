@@ -1,16 +1,19 @@
 data/cinnamon-settings-xclipy.desktop.in
 data/org.x.Xclipy-autostart.desktop.in
+data/org.x.Xclipy.Settings.desktop.in
 data/org.x.Xclipy.desktop.in
 cinnamon-settings/cs_xclipy.py
 xclipy/__init__.py
 xclipy/apps.py
 xclipy/caret.py
 xclipy/emoji.py
+xclipy/helper.py
 xclipy/history.py
 xclipy/i18n.py
 xclipy/kinds.py
 xclipy/passwords.py
 xclipy/paste.py
+xclipy/phones.py
 xclipy/placement.py
 xclipy/shortcut.py
 xclipy/ui/__init__.py
@@ -18,5 +21,7 @@ xclipy/ui/clipboard_page.py
 xclipy/ui/emoji_page.py
 xclipy/ui/overlay.py
 xclipy/ui/search_bar.py
+xclipy/ui/settings_page.py
+xclipy/ui/settings_window.py
 xclipy/watcher.py
 xclipy/xclipy.py

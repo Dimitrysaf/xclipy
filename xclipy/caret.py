@@ -40,8 +40,11 @@ def _atspi():
 
 
 class CaretTracker:
-    def __init__(self):
+    def __init__(self, window_origin=None):
+        """window_origin() is (x, y) of the focused window, or None: on Wayland,
+        where applications only know positions within their windows."""
         self._atspi = _atspi()
+        self._window_origin = window_origin
         self._focused = None
         if self._atspi is None:
             return
@@ -81,14 +84,22 @@ class CaretTracker:
             if text is None or not accessible.get_state_set().contains(self._atspi.StateType.EDITABLE):
                 return None
             offset = self._atspi.Text.get_caret_offset(text)
-            screen = self._atspi.CoordType.SCREEN
-            rect = self._atspi.Text.get_character_extents(text, offset, screen)
+            origin = (0, 0)
+            coords = self._atspi.CoordType.SCREEN
+            if self._window_origin is not None:
+                origin = self._window_origin()
+                if origin is None:
+                    return None
+                coords = self._atspi.CoordType.WINDOW
+            rect = self._atspi.Text.get_character_extents(text, offset, coords)
             if rect.height <= 0 and offset > 0:
                 # After the last character there's no character to measure:
                 # use the right edge of the one before.
-                rect = self._atspi.Text.get_character_extents(text, offset - 1, screen)
-                return (rect.x + rect.width, rect.y, 0, rect.height) if rect.height > 0 else None
-            return (rect.x, rect.y, rect.width, rect.height) if rect.height > 0 else None
+                rect = self._atspi.Text.get_character_extents(text, offset - 1, coords)
+                caret = (rect.x + rect.width, rect.y, 0, rect.height) if rect.height > 0 else None
+            else:
+                caret = (rect.x, rect.y, rect.width, rect.height) if rect.height > 0 else None
+            return (caret[0] + origin[0], caret[1] + origin[1], caret[2], caret[3]) if caret else None
         except GLib.Error:
             return None
 

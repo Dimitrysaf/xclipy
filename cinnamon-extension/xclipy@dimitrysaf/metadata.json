@@ -1,0 +1,7 @@
+{
+    "uuid": "xclipy@dimitrysaf",
+    "name": "Clipboard History helper",
+    "description": "Lets the Clipboard History (Xclipy) see every copy, place its overlay and paste, also on Wayland. Installed with Xclipy.",
+    "url": "https://github.com/Dimitrysaf/xclipy",
+    "cinnamon-version": ["6.0", "6.2", "6.4", "6.6"]
+}

@@ -1,8 +1,10 @@
 """Where the overlay opens."""
 
 import unittest
+from types import SimpleNamespace
 
 from xclipy.placement import GAP, MARGIN, place
+from xclipy.ui.overlay import is_wayland
 
 SIZE = (360, 440)
 WORKAREA = (0, 0, 1920, 1040)  # a 1080p monitor with a 40px panel at the bottom
@@ -25,6 +27,18 @@ class PlacementTests(unittest.TestCase):
         # Right edge: moved left. Neither below nor above fits: kept inside.
         self.assertEqual(place(SIZE, WORKAREA, (1900, 200, 1, 18))[0], 1920 - 360)
         self.assertEqual(place(SIZE, (0, 0, 1024, 600), (10, 300, 1, 18)), (10, 600 - 440))
+
+
+def _display(type_name):
+    return SimpleNamespace(__gtype__=SimpleNamespace(name=type_name))
+
+
+class DisplayTests(unittest.TestCase):
+    def test_wayland_by_its_type(self):
+        # Without GdkWayland imported, Python names the class GdkWaylandDisplay.
+        self.assertTrue(is_wayland(_display("GdkWaylandDisplay")))
+        self.assertFalse(is_wayland(_display("GdkX11Display")))
+        self.assertFalse(is_wayland(None))
 
 
 if __name__ == "__main__":

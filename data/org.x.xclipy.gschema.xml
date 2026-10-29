@@ -52,6 +52,9 @@
     <key name="excluded-apps" type="as">
       <default>[]</default>
     </key>
+    <key name="show-emojis" type="b">
+      <default>true</default>
+    </key>
     <key name="emoji-skin-tone" type="s">
       <choices>
         <choice value="none"/>
@@ -66,11 +69,11 @@
     <key name="recent-emoji" type="as">
       <default>[]</default>
     </key>
-    <key name="shortcut-added" type="b">
+    <key name="cinnamon-helper-added" type="b">
       <default>false</default>
     </key>
-    <key name="emoji-shortcut-added" type="b">
-      <default>false</default>
+    <key name="shortcuts-added" type="as">
+      <default>[]</default>
     </key>
   </schema>
 </schemalist>

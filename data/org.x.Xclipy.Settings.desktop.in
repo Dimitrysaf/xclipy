@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Clipboard
+Comment=Clipboard history and emoji
+Exec=xclipy --settings
+Icon=xclipy
+Terminal=false
+NotShowIn=X-Cinnamon;
+Categories=Settings;DesktopSettings;X-XFCE-SettingsDialog;X-XFCE-PersonalSettings;
+Keywords=clipboard;history;copy;paste;emoji;

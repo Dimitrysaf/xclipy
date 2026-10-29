@@ -1,0 +1,39 @@
+.TH XCLIPY 1 2026-10-29 Xclipy "Xclipy manual"
+.SH NAME
+xclipy \- clipboard history and emoji picker
+.SH SYNOPSIS
+\fBxclipy\fP [\fB\-\-background\fP | \fB\-\-show\fP | \fB\-\-emoji\fP | \fB\-\-settings\fP]
+.SH DESCRIPTION
+.LP
+\fBxclipy\fP keeps what you copy and opens it in an overlay under the text
+cursor, or in the bottom right corner of the screen when there is none. Choosing
+an item pastes it into the application you were typing in. The overlay also has
+an Emojis tab.
+.LP
+It runs from login without a window, and its keyboard shortcuts (Super+V and
+Super+.) open the overlay. They are the desktop's own custom shortcuts in
+Cinnamon, MATE and Xfce, added the first time Xclipy runs there.
+.LP
+Without an option, \fBxclipy\fP opens the overlay, like \fB\-\-show\fP.
+.SH OPTIONS
+.TP
+.B \-\-background
+Start without opening the overlay (as at login).
+.TP
+.B \-\-show
+Open the overlay on the Clipboard tab, or close it if it is open there.
+.TP
+.B \-\-emoji
+Open the overlay on the Emojis tab, or close it if it is open there.
+.TP
+.B \-\-settings
+Open the settings. In Cinnamon, they are also in System Settings, Clipboard.
+.SH FILES
+.TP
+.I ~/.local/share/xclipy/history.json
+The history, pinned items included. Passwords are not in it.
+.TP
+.I ~/.local/share/xclipy/images/
+The copied images, when the settings keep them.
+.SH SEE ALSO
+\fBcinnamon-settings\fP(1)

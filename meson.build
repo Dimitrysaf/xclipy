@@ -21,11 +21,18 @@ install_subdir(
   exclude_directories: ['__pycache__', 'ui/__pycache__'],
 )
 
-# The "Clipboard" page in Cinnamon's System Settings.
+# The "Clipboard" page in Cinnamon's System Settings, and the helper in
+# Cinnamon (an extension Xclipy turns on, for Wayland).
 install_data(
   'cinnamon-settings/cs_xclipy.py',
   install_dir: datadir / 'cinnamon' / 'cinnamon-settings' / 'modules',
 )
+install_subdir(
+  'cinnamon-extension/xclipy@dimitrysaf',
+  install_dir: datadir / 'cinnamon' / 'extensions',
+)
+
+install_man('man/xclipy.1')
 
 launcher_conf = configuration_data()
 launcher_conf.set('python_module_dir', python_module_dir)

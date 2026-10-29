@@ -6,6 +6,6 @@ Exec=xclipy --show
 Icon=xclipy
 Terminal=false
 NoDisplay=true
-OnlyShowIn=X-Cinnamon;
+OnlyShowIn=X-Cinnamon;MATE;XFCE;
 Categories=Utility;
 Keywords=clipboard;history;copy;paste;emoji;

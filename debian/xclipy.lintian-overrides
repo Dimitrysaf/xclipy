@@ -1,0 +1,3 @@
+# System Settings → Clipboard: the entry only shows in Cinnamon
+# (OnlyShowIn=X-Cinnamon), where cinnamon-settings is always installed.
+xclipy: desktop-command-not-in-package cinnamon-settings [usr/share/applications/cinnamon-settings-xclipy.desktop]

@@ -1,8 +1,9 @@
 """The Clipboard tab: the pinned items, then what was copied recently.
 
-Each item has a menu to edit, delete, pin or paste it. Editing happens on a
-page of its own, in the overlay. A search bar at the bottom (when the settings
-say so) searches the items, and its menu filters them by kind.
+Each item has a menu to edit, delete, pin or paste it, or send it to a phone
+(through Satellite). Editing happens on a page of its own, in the overlay. A
+search bar at the bottom (when the settings say so) searches the items, and
+its menu filters them by kind.
 """
 
 import gi
@@ -21,10 +22,11 @@ IMAGE_WIDTH = 320  # about the width of a row
 IMAGE_HEIGHT = 120  # images show their top part, this high at most
 PREVIEW_LENGTH = 400  # characters
 LINE_SEPARATOR = " "  # a new line, but not a new paragraph
+FROM_PHONE = "from-phone"  # a filter: what was copied on a phone
 FILTER_NAMES = {
     kinds.TEXT: N_("Text"), kinds.LINK: N_("Links"), kinds.EMAIL: N_("Email addresses"),
     kinds.PHONE: N_("Phone numbers"), kinds.PATH: N_("Files and folders"), kinds.COLOR: N_("Colors"),
-    kinds.PASSWORD: N_("Passwords"), kinds.IMAGE: N_("Images"),
+    kinds.PASSWORD: N_("Passwords"), kinds.IMAGE: N_("Images"), FROM_PHONE: N_("From phone"),
 }
 
 
@@ -41,11 +43,15 @@ def preview(text):
 
 
 class ClipboardPage(Gtk.Box):
-    def __init__(self, history, settings, on_choose, on_paste):
-        """on_choose(item) when an item is activated, on_paste(item) for its Paste."""
+    def __init__(self, history, settings, on_choose, on_paste, phones=None):
+        """on_choose(item) when an item is activated, on_paste(item) for its Paste.
+
+        phones: the phones to send items to (xclipy.phones.Phones), if any.
+        """
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._history = history
         self._settings = settings
+        self._phones = phones
         self._on_choose = on_choose
         self._on_paste = on_paste
         self._editing = None  # the item being edited
@@ -111,7 +117,11 @@ class ClipboardPage(Gtk.Box):
         shown = self._settings.get_boolean("show-search")
         self._bar.set_visible(shown)
         present = {kinds.item_kind(item) for item in items}
-        options = kinds.filter_options(present, self._settings.get_boolean("show-item-types")) if shown else []
+        show_types = self._settings.get_boolean("show-item-types")
+        options = kinds.filter_options(present, show_types) if shown else []
+        # Copies from phones too, when some items are and some aren't.
+        if shown and show_types and len({bool(item.device) for item in items}) == 2:
+            options.append(FROM_PHONE)
         if self._filter not in options:
             self._filter = None
         if not shown:
@@ -151,7 +161,10 @@ class ClipboardPage(Gtk.Box):
 
     def _is_shown(self, row):
         item = row.item
-        if self._filter is not None and kinds.item_kind(item) != self._filter:
+        if self._filter == FROM_PHONE:
+            if not item.device:
+                return False
+        elif self._filter is not None and kinds.item_kind(item) != self._filter:
             return False
         query = self._search.get_text().strip().lower()
         if not query:
@@ -226,7 +239,13 @@ class ClipboardPage(Gtk.Box):
         row.item = item
         row.pinned = pinned
         box = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=8, margin_bottom=8)
-        box.pack_start(self._content(item), True, True, 0)
+        content = self._content(item)
+        if item.device and self._settings.get_boolean("show-item-types"):
+            column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            column.pack_start(content, True, True, 0)
+            column.pack_start(_device(item.device), False, False, 0)
+            content = column
+        box.pack_start(content, True, True, 0)
         row.menu_button = Gtk.MenuButton(relief=Gtk.ReliefStyle.NONE, valign=Gtk.Align.CENTER,
                                          tooltip_text=_("More"), popover=self._menu(item, pinned))
         row.menu_button.add(Gtk.Image.new_from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON))
@@ -269,6 +288,10 @@ class ClipboardPage(Gtk.Box):
              lambda: (self._history.unpin if pinned else self._history.pin)(item)),
             (_("Paste"), lambda: self._on_paste(item)),
         ]
+        if item.text is not None and self._phones is not None:
+            for device_id, name in self._phones.devices():
+                entries.append((_("Send to {}").format(name),
+                                lambda device_id=device_id: self._phones.send(device_id, item.text)))
         for label, action in entries:
             button = Gtk.ModelButton(text=label)  # closes the menu
             button.connect("clicked", lambda _b, action=action: self._after_menu.append(action))
@@ -485,6 +508,17 @@ def _icon(name, tooltip):
     if tooltip:
         icon.set_tooltip_text(tooltip)
     return icon
+
+
+def _device(name):
+    """Where an item was copied: a phone, by its name."""
+    box = Gtk.Box(spacing=4)
+    box.get_style_context().add_class("dim-label")
+    box.pack_start(Gtk.Image.new_from_icon_name("phone-symbolic", Gtk.IconSize.MENU), False, False, 0)
+    label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END, max_width_chars=1)
+    label.set_markup("<small>{}</small>".format(GLib.markup_escape_text(name)))
+    box.pack_start(label, True, True, 0)
+    return box
 
 
 def _buffer_text(buffer):

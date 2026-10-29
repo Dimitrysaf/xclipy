@@ -11,11 +11,13 @@ import sys
 
 import gi
 
+gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 
-from xclipy import APP_ID, SCHEMA_ID, shortcut
+from xclipy import APP_ID, SCHEMA_ID, phones, shortcut
 from xclipy.caret import CaretTracker
+from xclipy.helper import CinnamonHelper, enable_once
 from xclipy.history import ClipboardHistory
 from xclipy.i18n import _
 from xclipy.passwords import Keyring
@@ -37,6 +39,7 @@ class XclipyApplication(Gtk.Application):
         self.watcher = None
         self.caret = None
         self.overlay = None
+        self.settings_window = None
         self._terminal = False
         self.add_main_option(
             "background", ord("b"), GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
@@ -47,6 +50,9 @@ class XclipyApplication(Gtk.Application):
         self.add_main_option(
             "emoji", ord("e"), GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
             _("Open the emojis, or close them when they are open"), None)
+        self.add_main_option(
+            "settings", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
+            _("Open the settings"), None)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -69,13 +75,29 @@ class XclipyApplication(Gtk.Application):
         self.settings.connect("changed::enabled", self._on_enabled_changed)
         self.settings.connect("changed::save-pinned-passwords", lambda s, key: self.history.keep_pinned_passwords(
             Keyring() if s.get_boolean(key) else None))
-        self.watcher = ClipboardWatcher(self.history, self.settings)
-        self.caret = CaretTracker()
-        if shortcut.available():
-            for kind in (shortcut.CLIPBOARD, shortcut.EMOJI):
-                shortcut.Shortcut(kind).add_default(self.settings)
+        # On Wayland, the helper in Cinnamon sees the copies, places the
+        # overlay and pastes; on X11 Xclipy does it all itself.
+        self.wayland = is_wayland(Gdk.Display.get_default())
+        self.helper = None
+        if "X-Cinnamon" in os.environ.get("XDG_CURRENT_DESKTOP", "").split(":"):
+            enable_once(self.settings)
+            if self.wayland:
+                self.helper = CinnamonHelper()
+        self.watcher = ClipboardWatcher(self.history, self.settings, self.helper)
+        if self.helper is not None:
+            self.helper.on_clipboard_changed = self.watcher.on_helper_copy
+        self.caret = CaretTracker(self._focused_window_origin if self.wayland else None)
+        # Copies from phones, through Satellite.
+        self.phones = phones.Phones()
+        self.watcher.copied_from = lambda text: self.phones.copies.claim(phones.digest(text))
+        self.phones.on_received = self._on_phone_copy
+        backend = shortcut.backend_for_desktop()
+        if backend is not None:
+            for kind in shortcut.KINDS:
+                shortcut.Shortcut(kind, backend).add_default(self.settings)
         for name, callback in (
             ("show", lambda *_args: self.toggle_overlay()),
+            ("settings", lambda *_args: self.show_settings()),
             ("clear-history", lambda *_args: self.history.clear_all()),
             ("quit", lambda *_args: self.quit()),
         ):
@@ -88,7 +110,9 @@ class XclipyApplication(Gtk.Application):
     def do_command_line(self, command_line):
         # Also runs in the first instance when xclipy is started again.
         options = command_line.get_options_dict()
-        if options.contains("emoji"):
+        if options.contains("settings"):
+            self.show_settings()
+        elif options.contains("emoji"):
             self.toggle_overlay("emoji")
         elif not options.contains("background"):
             self.toggle_overlay()
@@ -97,19 +121,44 @@ class XclipyApplication(Gtk.Application):
     def do_activate(self):
         self.toggle_overlay()
 
+    def _on_phone_copy(self, sha256):
+        # Seen before Satellite said where it came from: the copy is first already.
+        items = self.history.items()
+        if items and items[0].text is not None and not items[0].device \
+                and phones.digest(items[0].text) == sha256:
+            self.history.set_device(items[0], self.phones.copies.claim(sha256))
+
+    def _focused_window_origin(self):
+        focused = self.helper.focused_window() if self.helper is not None and self.helper.available else None
+        # No window: an empty origin (Wayland windows may have no pid).
+        return focused[3][:2] if focused and focused[3][2] > 0 else None
+
+    def show_settings(self):
+        from xclipy.ui.settings_window import SettingsWindow  # only when asked for
+        if self.settings_window is None:
+            self.settings_window = SettingsWindow(self)
+            self.settings_window.connect("destroy", lambda _w: setattr(self, "settings_window", None))
+        self.settings_window.present()
+
     def toggle_overlay(self, tab="clipboard"):
         """Open the overlay on a tab, switch to it, or close the overlay when it's on it."""
         if not self.settings.get_boolean("enabled"):
             return  # the shortcuts do nothing while the history is off
+        if tab == "emoji" and not self.settings.get_boolean("show-emojis"):
+            return
         if self.overlay is None:
             self.overlay = Overlay(self, self.history, self.settings, self.choose,
                                    lambda item: self.choose(item, then_paste=True),
-                                   self.choose_emoji)
+                                   self.choose_emoji, self.phones)
             self.history.on_changed = self.overlay.clipboard_page.refresh
+            self.phones.on_devices_changed = self.overlay.clipboard_page.refresh
         if not self.overlay.get_visible():
             # Asked now, while the application still has the keyboard focus.
             self._terminal = self.caret.in_terminal()
-            self.overlay.popup(self.caret.caret(), tab)
+            caret = self.caret.caret()
+            self.overlay.popup(caret, tab)
+            if self.helper is not None and self.helper.available:
+                self.helper.place_overlay(caret)
         elif self.overlay.tab != tab:
             self.overlay.switch_to(tab)
         else:
@@ -132,14 +181,17 @@ class XclipyApplication(Gtk.Application):
         self.overlay.hide()
         if then_paste is None:
             then_paste = self.settings.get_boolean("paste-on-select")
-        # xdotool can't press keys in other applications on Wayland.
-        if not then_paste or is_wayland(self.overlay.get_display()):
+        # xdotool can't press keys in other applications on Wayland: the helper can.
+        if not then_paste or (self.wayland and not (self.helper is not None and self.helper.available)):
             return False
         GLib.timeout_add(PASTE_DELAY_MS, self._paste)
         return True
 
     def _paste(self):
-        paste(self._terminal)
+        if self.wayland:
+            self.helper.paste(self._terminal)
+        else:
+            paste(self._terminal)
         return GLib.SOURCE_REMOVE
 
     def _forget_password(self, item):

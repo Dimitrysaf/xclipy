@@ -5,7 +5,8 @@ What is copied comes from the window that has the keyboard focus: its class
 and its program are compared with the names its desktop file gives (its id,
 its StartupWMClass and its program).
 
-This needs X11: on Wayland, no application is recognised.
+On X11 the focused window comes from libwnck; on Wayland from Xclipy's helper in
+Cinnamon, and without it no application is recognised.
 """
 
 import os
@@ -21,7 +22,8 @@ LAUNCHERS = {"env", "sh", "bash", "python", "python3", "perl", "java", "gjs", "f
 
 def _wnck():
     # libwnck only knows X11, and crashes without it.
-    if not type(Gdk.Display.get_default()).__name__.startswith("X11"):
+    display = Gdk.Display.get_default()
+    if display is None or display.__gtype__.name != "GdkX11Display":
         return None
     try:
         gi.require_version("Wnck", "3.0")
@@ -61,8 +63,10 @@ def _names_of_desktop_file(desktop_id):
 
 
 class FocusedApplication:
-    def __init__(self):
+    def __init__(self, helper=None):
+        """helper: Xclipy's helper in Cinnamon, which knows the focused window on Wayland."""
         wnck = _wnck()
+        self._helper = helper
         self._screen = None
         if wnck is not None:
             screen = wnck.Screen.get_default()
@@ -72,19 +76,29 @@ class FocusedApplication:
 
     def names(self):
         """The lowercase names of the focused window's application: class and program."""
-        window = self._screen.get_active_window() if self._screen is not None else None
+        if self._screen is None:
+            return self._names_from_helper()
+        window = self._screen.get_active_window()
         if window is None:
             return set()
-        names = {window.get_class_group_name() or "", window.get_class_instance_name() or ""}
-        pid = window.get_pid()
-        if pid > 0:
-            for path in ("/proc/{}/comm".format(pid), "/proc/{}/exe".format(pid)):
-                try:
-                    if path.endswith("comm"):
-                        with open(path, encoding="utf-8") as stream:
-                            names.add(stream.read().strip())
-                    else:
-                        names.add(os.path.basename(os.readlink(path)))
-                except OSError:
-                    pass
-        return {name.lower() for name in names if name} - LAUNCHERS
+        return _names(window.get_class_group_name(), window.get_class_instance_name(), window.get_pid())
+
+    def _names_from_helper(self):
+        focused = self._helper.focused_window() if self._helper is not None and self._helper.available else None
+        if not focused:
+            return set()
+        wm_class, app_id, pid, _origin = focused
+        return _names(wm_class, app_id, pid)
+
+
+def _names(wm_class, wm_instance_or_app_id, pid):
+    """The lowercase names of a window's application: its class or id, and its program."""
+    names = {wm_class or "", wm_instance_or_app_id or ""}
+    if pid > 0:
+        try:
+            with open("/proc/{}/comm".format(pid), encoding="utf-8") as stream:
+                names.add(stream.read().strip())
+            names.add(os.path.basename(os.readlink("/proc/{}/exe".format(pid))))
+        except OSError:
+            pass
+    return {name.lower() for name in names if name} - LAUNCHERS

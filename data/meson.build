@@ -15,8 +15,8 @@ install_data(
   install_dir: datadir / 'icons' / 'hicolor' / 'scalable' / 'actions',
 )
 
-# The overlay, and its page in System Settings.
-foreach desktop_id : ['org.x.Xclipy', 'cinnamon-settings-xclipy']
+# The overlay, its settings window, and its page in Cinnamon's System Settings.
+foreach desktop_id : ['org.x.Xclipy', 'org.x.Xclipy.Settings', 'cinnamon-settings-xclipy']
   i18n.merge_file(
     input: desktop_id + '.desktop.in',
     output: desktop_id + '.desktop',
