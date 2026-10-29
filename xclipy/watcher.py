@@ -51,7 +51,6 @@ class ClipboardWatcher:
         self._focused = apps.FocusedApplication(helper)
         self._own_change = False  # the next owner change is ours
         self._own_copy = (None, 0)  # what Xclipy itself put there, and when
-        self.copied_from = lambda text: None  # the phone a copy came from, if known
         # The passwords seen (as digests, in memory): Cinnamon can offer one
         # again without its mark, and a forgotten one mustn't come back.
         self._secrets = set()
@@ -146,7 +145,7 @@ class ClipboardWatcher:
             if not self._history.has_text(text):
                 return  # a forgotten password
             secret = True
-        self._history.add_text(text, secret, self.copied_from(text))
+        self._history.add_text(text, secret)
 
     def _on_image(self, _clipboard, pixbuf, *_args):
         if pixbuf is None or pixbuf.get_width() * pixbuf.get_height() > MAX_IMAGE_PIXELS:

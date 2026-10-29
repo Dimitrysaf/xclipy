@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: xclipy\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 07:52+0000\n"
+"POT-Creation-Date: 2026-10-29 08:18+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -97,112 +97,104 @@ msgstr ""
 msgid "Emojis"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:27
+#: xclipy/ui/clipboard_page.py:25
 msgid "Text"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:27
+#: xclipy/ui/clipboard_page.py:25
 msgid "Links"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:27
+#: xclipy/ui/clipboard_page.py:25
 msgid "Email addresses"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:28
+#: xclipy/ui/clipboard_page.py:26
 msgid "Phone numbers"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:28
+#: xclipy/ui/clipboard_page.py:26
 msgid "Files and folders"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:28
+#: xclipy/ui/clipboard_page.py:26
 msgid "Colors"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:29 xclipy/ui/settings_page.py:59
+#: xclipy/ui/clipboard_page.py:27 xclipy/ui/settings_page.py:59
 msgid "Passwords"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:29
+#: xclipy/ui/clipboard_page.py:27
 msgid "Images"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:29
-msgid "From phone"
-msgstr ""
-
-#: xclipy/ui/clipboard_page.py:68
+#: xclipy/ui/clipboard_page.py:62
 msgid "No items found"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:84
+#: xclipy/ui/clipboard_page.py:78
 msgid "Nothing copied yet"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:85
+#: xclipy/ui/clipboard_page.py:79
 msgid "What you copy shows up here."
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:109 xclipy/ui/clipboard_page.py:142
-#: xclipy/ui/clipboard_page.py:152
+#: xclipy/ui/clipboard_page.py:103 xclipy/ui/clipboard_page.py:132
+#: xclipy/ui/clipboard_page.py:142
 msgid "Filter"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:146
+#: xclipy/ui/clipboard_page.py:136
 msgid "All items"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:250
+#: xclipy/ui/clipboard_page.py:231
 msgid "More"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:263 xclipy/ui/clipboard_page.py:272
+#: xclipy/ui/clipboard_page.py:244 xclipy/ui/clipboard_page.py:253
 msgid "Password"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:284 xclipy/ui/clipboard_page.py:359
+#: xclipy/ui/clipboard_page.py:265 xclipy/ui/clipboard_page.py:336
 msgid "Edit"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:286
+#: xclipy/ui/clipboard_page.py:267
 msgid "Delete"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:287
+#: xclipy/ui/clipboard_page.py:268
 msgid "Unpin"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:287
+#: xclipy/ui/clipboard_page.py:268
 msgid "Pin"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:289
+#: xclipy/ui/clipboard_page.py:270
 msgid "Paste"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:293
-msgid "Send to {}"
-msgstr ""
-
-#: xclipy/ui/clipboard_page.py:323
+#: xclipy/ui/clipboard_page.py:300
 msgid "Pinned"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:323
+#: xclipy/ui/clipboard_page.py:300
 msgid "Recent"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:327
+#: xclipy/ui/clipboard_page.py:304
 msgid "Clear all"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:370 xclipy/ui/settings_page.py:219
+#: xclipy/ui/clipboard_page.py:347 xclipy/ui/settings_page.py:219
 msgid "Cancel"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:372
+#: xclipy/ui/clipboard_page.py:349
 msgid "Save"
 msgstr ""
 

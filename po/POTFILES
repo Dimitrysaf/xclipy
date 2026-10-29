@@ -13,7 +13,6 @@ xclipy/i18n.py
 xclipy/kinds.py
 xclipy/passwords.py
 xclipy/paste.py
-xclipy/phones.py
 xclipy/placement.py
 xclipy/shortcut.py
 xclipy/ui/__init__.py

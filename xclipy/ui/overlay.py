@@ -48,7 +48,7 @@ def _server_time(gdk_window):
 
 
 class Overlay(Gtk.Window):
-    def __init__(self, application, history, settings, on_choose, on_paste, on_choose_emoji, phones=None):
+    def __init__(self, application, history, settings, on_choose, on_paste, on_choose_emoji):
         # The helper in Cinnamon finds the overlay by this title; nothing shows
         # it, and screen readers say the accessible name.
         super().__init__(application=application, title="Xclipy")
@@ -84,7 +84,7 @@ class Overlay(Gtk.Window):
                                 margin_bottom=6)
         self._settings = settings
         self._editing = False
-        self.clipboard_page = ClipboardPage(history, settings, on_choose, on_paste, phones)
+        self.clipboard_page = ClipboardPage(history, settings, on_choose, on_paste)
         self.emoji_page = EmojiPage(settings, on_choose_emoji)
         self._stack.add_titled(self.clipboard_page, "clipboard", _("Clipboard"))
         self._stack.add_titled(self.emoji_page, "emoji", _("Emojis"))

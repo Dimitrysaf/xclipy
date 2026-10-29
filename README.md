@@ -2,7 +2,7 @@
 
 Clipboard history for the Cinnamon, MATE and Xfce desktops.
 
-<img width="800" height="600" alt="Xclipy's clipboard history under the text cursor, with a copy from a phone and an item's menu open" src="screenshots/clipboard.png" />
+<img width="800" height="600" alt="Xclipy's clipboard history under the text cursor, with an item's menu open" src="screenshots/clipboard.png" />
 
 <img width="800" height="600" alt="Xclipy's emoji picker" src="screenshots/emoji.png" />
 
@@ -23,12 +23,8 @@ Clipboard history for the Cinnamon, MATE and Xfce desktops.
   (terminals included, with Ctrl+Shift+V).
 - A search bar (Show search bar, in the settings) searches the items, and its
   menu shows only one kind of item: text, links, email addresses, phone
-  numbers, files and folders, colors, passwords, images or what was copied on a
-  phone (only images without Show item types). The menu only offers the kinds
-  there are.
-- With [Satellite](https://github.com/Dimitrysaf/satellite), what is copied on
-  a phone shows the phone's name, and each item's menu can send it to a
-  connected phone (Send to ...).
+  numbers, files and folders, colors, passwords or images (only images without
+  Show item types). The menu only offers the kinds there are.
 - Each item has a menu to Edit, Delete, Pin or Paste it. Pinned items stay on
   top, in Pinned, and are kept by "Clear all" and by the size limit (Clear
   history in the settings deletes them too). Editing happens in the overlay,
@@ -79,9 +75,6 @@ running Xclipy (or start it), on the Clipboard or the Emojis tab.
 - The page in System Settings is `cs_xclipy.py`, installed with Cinnamon's own
   modules in `/usr/share/cinnamon/cinnamon-settings/modules`. It is the same
   page as the settings window's (`xclipy/ui/settings_page.py`).
-- Copies from phones: Satellite puts a phone's copy on the clipboard and says
-  so on D-Bus (`org.x.Satellite.Phone`, `ClipboardReceived`, with the text's
-  SHA-256, never the text). Xclipy never starts Satellite.
 - In Cinnamon, a helper extension (`xclipy@dimitrysaf`, installed with Xclipy
   and turned on the first time Xclipy runs there) does on Wayland what an
   application can't do there itself. See below.
@@ -203,7 +196,6 @@ Optional:
 ```text
 cinnamon (System Settings → Clipboard, and the helper extension)
 fonts-noto-color-emoji (to show the emoji in color)
-satellite (copies from phones, and sending items to them)
 ```
 
 #### Build and install

@@ -15,7 +15,7 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk
 
-from xclipy import APP_ID, SCHEMA_ID, phones, shortcut
+from xclipy import APP_ID, SCHEMA_ID, shortcut
 from xclipy.caret import CaretTracker
 from xclipy.helper import CinnamonHelper, enable_once
 from xclipy.history import ClipboardHistory
@@ -87,10 +87,6 @@ class XclipyApplication(Gtk.Application):
         if self.helper is not None:
             self.helper.on_clipboard_changed = self.watcher.on_helper_copy
         self.caret = CaretTracker(self._focused_window_origin if self.wayland else None)
-        # Copies from phones, through Satellite.
-        self.phones = phones.Phones()
-        self.watcher.copied_from = lambda text: self.phones.copies.claim(phones.digest(text))
-        self.phones.on_received = self._on_phone_copy
         backend = shortcut.backend_for_desktop()
         if backend is not None:
             for kind in shortcut.KINDS:
@@ -121,13 +117,6 @@ class XclipyApplication(Gtk.Application):
     def do_activate(self):
         self.toggle_overlay()
 
-    def _on_phone_copy(self, sha256):
-        # Seen before Satellite said where it came from: the copy is first already.
-        items = self.history.items()
-        if items and items[0].text is not None and not items[0].device \
-                and phones.digest(items[0].text) == sha256:
-            self.history.set_device(items[0], self.phones.copies.claim(sha256))
-
     def _focused_window_origin(self):
         focused = self.helper.focused_window() if self.helper is not None and self.helper.available else None
         # No window: an empty origin (Wayland windows may have no pid).
@@ -149,9 +138,8 @@ class XclipyApplication(Gtk.Application):
         if self.overlay is None:
             self.overlay = Overlay(self, self.history, self.settings, self.choose,
                                    lambda item: self.choose(item, then_paste=True),
-                                   self.choose_emoji, self.phones)
+                                   self.choose_emoji)
             self.history.on_changed = self.overlay.clipboard_page.refresh
-            self.phones.on_devices_changed = self.overlay.clipboard_page.refresh
         if not self.overlay.get_visible():
             # Asked now, while the application still has the keyboard focus.
             self._terminal = self.caret.in_terminal()

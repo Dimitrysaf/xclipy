@@ -21,15 +21,14 @@ MAX_LENGTH = 1000000  # characters; longer copies (whole files, logs) aren't kep
 class Item:
     """Copied text (maybe a password) or a copied image, a PNG file in the images folder."""
 
-    __slots__ = ("text", "image", "secret", "time", "secret_id", "device")
+    __slots__ = ("text", "image", "secret", "time", "secret_id")
 
-    def __init__(self, text=None, image=None, secret=False, copied=None, secret_id=None, device=None):
+    def __init__(self, text=None, image=None, secret=False, copied=None, secret_id=None):
         self.text = text
         self.image = image
         self.secret = secret
         self.time = time.time() if copied is None else copied
         self.secret_id = secret_id  # where it is in the keyring, when it's saved there
-        self.device = device  # the name of the phone it was copied on, through Satellite
 
     @property
     def key(self):
@@ -44,8 +43,6 @@ class Item:
         else:
             data = {"text": self.text}
         data["time"] = self.time
-        if self.device:
-            data["device"] = self.device
         return data
 
     @classmethod
@@ -56,13 +53,12 @@ class Item:
             return None
         copied = data.get("time")
         copied = copied if isinstance(copied, (int, float)) else None
-        device = data.get("device") if isinstance(data.get("device"), str) else None
         if isinstance(data.get("image"), str) and os.sep not in data["image"]:
             return cls(image=data["image"], copied=copied)
-        if isinstance(data.get("secret"), str):  # its text is in the keyring
-            return cls(secret=True, copied=copied, secret_id=data["secret"], device=device)
+        if isinstance(data.get("secret"), str):
+            return cls(secret=True, copied=copied, secret_id=data["secret"])  # its text is in the keyring
         if isinstance(data.get("text"), str) and _worth_keeping(data["text"]):
-            return cls(text=data["text"], copied=copied, device=device)
+            return cls(text=data["text"], copied=copied)
         return None
 
 
@@ -129,14 +125,11 @@ class ClipboardHistory:
     def image_path(self, item):
         return os.path.join(self.images_dir, item.image)
 
-    def add_text(self, text, secret=False, device=None):
-        """Put text first; returns the item, or None when it isn't worth keeping.
-
-        device: the phone it was copied on, if it was.
-        """
+    def add_text(self, text, secret=False):
+        """Put text first; returns the item, or None when it isn't worth keeping."""
         if not _worth_keeping(text):
             return None
-        return self._add(Item(text=text, secret=secret, device=device))
+        return self._add(Item(text=text, secret=secret))
 
     def add_image(self, name):
         """Put an image first, already saved as ``name`` in the images folder."""
@@ -152,11 +145,7 @@ class ClipboardHistory:
             # without its mark (Cinnamon keeps the clipboard of a closed
             # application, and offers it again as plain text).
             item.secret = item.secret or old.secret
-            item.device = item.device or old.device
             if old is self._items[0]:
-                if item.device != old.device:
-                    old.device = item.device
-                    self._changed()
                 return old
             self._items.remove(old)
         self._items.insert(0, item)
@@ -164,11 +153,6 @@ class ClipboardHistory:
         del self._items[self._size:]
         self._changed()
         return item
-
-    def set_device(self, item, device):
-        """Say which phone an item was copied on, once that's known."""
-        item.device = device
-        self._changed()
 
     def use(self, item):
         """Move a recent item to the top, as when it's copied again."""

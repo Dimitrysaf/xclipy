@@ -68,18 +68,6 @@ class HistoryTests(unittest.TestCase):
         self.assertIsNone(history.add_text("x" * (MAX_LENGTH + 1)))
         self.assertEqual(history.items(), [])
 
-    def test_remembers_the_phone_a_copy_came_from(self):
-        history = self.history()
-        history.add_text("from the phone", device="Pixel")
-        mine = history.add_text("mine")
-        history.set_device(mine, "Galaxy")
-        history.add_text("from the phone")  # copied again here: still the phone's
-        history.add_text("local")
-        self.assertEqual([(i.text, i.device) for i in self.history().items()],
-                         [("local", None), ("from the phone", "Pixel"), ("mine", "Galaxy")])
-        with open(self.path, encoding="utf-8") as stream:
-            self.assertNotIn("device", json.load(stream)["items"][0])
-
     def test_use_moves_an_item_to_the_top(self):
         history = self.history()
         one = history.add_text("one")
