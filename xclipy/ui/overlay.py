@@ -20,6 +20,7 @@ WIDTH, HEIGHT = 360, 440
 # Cinnamon takes the keyboard for a moment when a shortcut is pressed: the
 # overlay only closes when the focus doesn't come back by then.
 FOCUS_LOST_MS = 200
+FADE_MS = 120  # the fade in when it opens, about as quick as a menu
 
 # The card is drawn as the theme draws a menu (Mint-Y: square, with a 1px border),
 # so its corners, border and background are the theme's; only a menu's outer margin
@@ -70,7 +71,8 @@ class Overlay(Gtk.Window):
         # Rounded corners need a see-through window, so compositing.
         screen = self.get_screen()
         visual = screen.get_rgba_visual()
-        if visual is not None and screen.is_composited():
+        self._composited = visual is not None and screen.is_composited()
+        if self._composited:
             self.set_visual(visual)
             self.set_app_paintable(True)
         else:
@@ -80,6 +82,8 @@ class Overlay(Gtk.Window):
         card.get_style_context().add_class("menu")
         card.get_style_context().add_class("xclipy-card")
         self.add(card)
+        self._card = card
+        self._fade_id = 0
 
         self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE, vexpand=True,
                                 margin_bottom=6)
@@ -102,7 +106,7 @@ class Overlay(Gtk.Window):
         self.clipboard_page.on_drag = self.drag
 
         self.connect("key-press-event", self._on_key_press)
-        # Presses the items, buttons and search don't take move the overlay.
+        # A press that the items, buttons and search field don't take moves the overlay.
         self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
         self.connect("button-press-event", self._on_button_press)
         self._hide_source = 0
@@ -125,8 +129,32 @@ class Overlay(Gtk.Window):
         if self.tab == tab:
             self._on_tab_changed(self._stack, None)  # start the tab afresh
         self.tab = tab
+        self._fade_in()
         self.show()
         self.present_with_time(_server_time(self.get_window()))
+
+    def _fade_in(self):
+        """Fade the content in. The window itself can't fade on Wayland, its content can."""
+        if self._fade_id:
+            self.remove_tick_callback(self._fade_id)
+            self._fade_id = 0
+        if not self._composited or not Gtk.Settings.get_default().props.gtk_enable_animations:
+            self._card.set_opacity(1.0)  # nothing to fade through, or animations are off
+            return
+        self._card.set_opacity(0.0)
+        start = []
+
+        def tick(_widget, clock):
+            now = clock.get_frame_time()
+            if not start:
+                start.append(now)
+            progress = min(1.0, (now - start[0]) / (FADE_MS * 1000))
+            self._card.set_opacity(1 - (1 - progress) ** 3)  # quick at first, like a menu
+            if progress < 1.0:
+                return GLib.SOURCE_CONTINUE
+            self._fade_id = 0
+            return GLib.SOURCE_REMOVE
+        self._fade_id = self.add_tick_callback(tick)
 
     def _position(self, display):
         pointer = monitor = None
