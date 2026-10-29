@@ -2,112 +2,153 @@
 
 Clipboard history for the Cinnamon, MATE and Xfce desktops.
 
-<img width="800" height="600" alt="Xclipy's clipboard history under the text cursor, with an item's menu open" src="screenshots/clipboard.png" />
+<img width="390" height="440" alt="Xclipy's Clipboard tab: a pinned item, then the recent ones with their types" src="screenshots/clipboard.png" /> <img width="390" height="440" alt="Xclipy's Emojis tab, on the Smileys group" src="screenshots/emoji.png" />
 
-<img width="800" height="600" alt="Xclipy's emoji picker" src="screenshots/emoji.png" />
-
-<img width="800" height="420" alt="Xclipy's page in System Settings" src="screenshots/settings.png" />
+<img width="820" height="1382" alt="Xclipy's page in System Settings" src="screenshots/settings.png" />
 
 ## Features
 
-- Keeps what you copy: newest first, without duplicates, also after a restart.
-  Copied images too, if you want, showing their top part.
-- Links, email addresses, phone numbers, files and folders get an icon, and
-  colors (#3a7bd5, rgb(...)) a swatch of the color (Show item types, in the
-  settings).
-- Super+V opens it, and Super+. opens it on the Emojis tab, without a window
-  bar or a tray icon: under the text cursor, or in the bottom right corner of
-  the screen when there's no text cursor. The Emojis tab can be turned off
-  (Show emojis, in the settings).
-- Choosing an item pastes it into the application you were typing in
-  (terminals included, with Ctrl+Shift+V).
-- A search bar (Show search bar, in the settings) searches the items, and its
-  menu shows only one kind of item: text, links, email addresses, phone
-  numbers, files and folders, colors, passwords or images (only images without
-  Show item types). The menu only offers the kinds there are.
-- Each item has a menu to Edit, Delete, Pin or Paste it. Pinned items stay on
-  top, in Pinned, and are kept by "Clear all" and by the size limit (Clear
-  history in the settings deletes them too). Editing happens in the overlay,
-  with Save and Cancel, without the tabs.
-- An Emojis tab with search, the emoji groups and the recently used ones.
-- Passwords show as ••••••••, are deleted once pasted and forgotten after a
-  minute, and are never saved to disk; pinned ones can be saved in the keyring
-  (Passwords and Keys) instead. They are recognised when the password
-  manager marks them as secret (KeePassXC, KWallet, ...), and by how random
-  they look: one word mixing lowercase, uppercase, digits and symbols, with no
-  word-like parts ("xK9#mQ2$vL", API keys; not "user_name_2" or
-  "Password2024").
-- Its settings are in System Settings → Clipboard on Cinnamon, and in the
-  Clipboard settings application (in the Control Center, the Settings Manager
-  or `xclipy --settings`) elsewhere: turning the history on and off, the
-  shortcuts, how many items to keep, clearing them when logging out, deleting
-  old ones, images, passwords, applications whose copies are never kept, and
-  the Emojis tab and its skin tone.
+### Clipboard history
 
-The overlay works with the keyboard: arrows to move, Enter to choose, the Menu
-key (or Shift+F10) for an item's menu, Escape to close, Ctrl+Tab to switch
-tabs. While editing, Ctrl+Enter saves and Escape cancels. With the search bar,
-typing searches, Down goes back to the list and Escape clears the search. In
-the Emojis tab, just type to search.
+Super + V opens an overlay with your clipboard history. It opens right under
+your text cursor, so your eyes (and your mouse) don't have to travel far.
+Choose an item and it's pasted where you were typing.
+
+Items are sorted into types, like links, email addresses, phone numbers,
+files, color codes (with a little swatch of the color) and passwords. Passwords
+are hidden as •••••••• once recognised, and they only live in memory: they're
+gone after a reboot, even if you pin them. If you want pinned passwords to
+stick around, turn on saving them to the keyring.
+
+Images can be copied too. Don't want them? Turn them off in the settings. Heck,
+you can turn off whatever you like in the settings. Even the clipboard history
+itself :)
+
+Anything can be pinned to the top, edited, deleted or pasted from its menu, and
+a search bar can join the bottom of the overlay if you like searching more than
+scrolling.
+
+### Emojis
+
+Super + . opens the Emojis tab, because sometimes words aren't enough 🙂. Every
+emoji is there, in groups, with search, your recently used ones first and the
+skin tone you prefer. Never use them? You know the drill: turn them off.
+
+### Keyboard
+
+Your hands never have to leave the keyboard: arrows to move, Enter to choose,
+the Menu key (or Shift+F10) for an item's menu, Escape to close, Ctrl+Tab to
+switch tabs. While editing, Ctrl+Enter saves and Escape cancels. With the
+search bar, just type to search, Down goes back to the list and Escape clears
+the search. In the Emojis tab, just type.
+
+### What is saved
+
+The history is kept in your home folder, readable only by you, so it survives
+a restart. Passwords never go there. Clear history, in the settings, deletes
+everything, pinned items included.
 
 ## Architecture
 
-`xclipy` is the application. It runs from login, without a window
-(`xclipy --background`), and watches the clipboard. The keyboard shortcuts run
-`xclipy --show` and `xclipy --emoji`, which open or close the overlay of the
-running Xclipy (or start it), on the Clipboard or the Emojis tab.
+`xclipy` is the application, in Python with GTK 3. It starts at login without a
+window (`xclipy --background`, XDG autostart) and watches the clipboard. The
+keyboard shortcuts run `xclipy --show` and `xclipy --emoji`, which reach the
+running Xclipy over D-Bus (`org.x.Xclipy`, which also starts it if needed) and
+open or close the overlay on that tab. `xclipy --settings` opens the settings.
+
+### Watching the clipboard
+
+Xclipy follows the clipboard's owner changes (GTK on X11, the helper on
+Wayland) and reads the new content as text or, when images are kept, as an
+image. It skips its own copies, and copies made in an excluded application:
+the application is the window with the keyboard focus (libwnck on X11, the
+helper on Wayland), matched by its window class, application id and program
+name. When an application quits, Cinnamon and MATE put back what it had
+copied, as plain text; Xclipy remembers the passwords it has seen (as SHA-256
+digests, in memory), so a password stays one, and a forgotten one isn't kept
+again.
+
+### Recognising passwords and other kinds
+
+- **Passwords** are recognised in two ways (`xclipy/kinds.py`,
+  `xclipy/watcher.py`):
+  - The copying application marks them: password managers (KeePassXC,
+    KWallet, ...) add the `x-kde-passwordManagerHint` target to the
+    clipboard.
+  - They look random: one word of 8 to 128 characters, mixing at least three
+    of lowercase, uppercase, digits and symbols, switching between them
+    often, with few runs of three or more of the same class, as words have.
+    Links, email addresses, paths, numbers, UUIDs and hashes never count.
+    "xK9#mQ2$vL" is a password; "user_name_2" and "Password2024" aren't.
+- **Other kinds** are recognised by their text alone, in this order: links
+  (`http(s)://`, `ftp://`, `smb://`, `www.`), email addresses, colors (`#rgb`,
+  `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`), phone numbers (7 to 15 digits,
+  with `+`, `tel:`, brackets or groups; dates aren't), and files and folders
+  (a `file://` URI, or a path that exists). Anything else, or anything on
+  several lines, is text.
+
+### Passwords
+
+Unless it is pinned, a password is deleted from the history about a second
+after it is pasted (once the application has taken it), and taken off the
+clipboard too if it's still there. Every 10 seconds, Xclipy forgets passwords older than the set time, and
+deletes items older than the set number of days when that is on. A pinned
+password is only kept beyond the session if "Save pinned passwords" is on:
+it is then stored in the keyring through libsecret (schema
+`org.x.Xclipy.Password`, with a random id), and the history file only has that
+id. Turning the option off deletes them from the keyring.
+
+### Storage
+
+- The history: `~/.local/share/xclipy/history.json` (newest first, pinned items
+  apart, each item with the time it was copied), written atomically, with the
+  folder `0700` and the file `0600`. Text over a million characters isn't
+  kept.
+- Images: PNG files in `~/.local/share/xclipy/images/`, named by a hash of the
+  picture, so the same image is stored once; files no item uses are deleted.
+- The settings, the recently used emoji and the skin tone: GSettings,
+  `org.x.xclipy`.
+- At logout the recent items are cleared, when set. The history file also
+  records the session, so a session that ended without logging out (a crash, a
+  power cut) is cleared at the next login.
+
+### Opening and pasting
+
+- The text cursor's position comes from AT-SPI, the accessibility interface,
+  for the focused text field. GTK applications (Text Editor, terminals...)
+  give it; the overlay opens in the bottom right corner of the screen for
+  those that don't.
+- Pasting puts the item on the clipboard and presses Ctrl+V with `xdotool`
+  (X11; the helper on Wayland), or Ctrl+Shift+V when AT-SPI says the focused
+  application is a terminal.
+- The emoji come from Unicode's `emoji-test.txt` (`xclipy/emoji_data.py`) and
+  are searched by their English names.
+
+### Desktop integration
 
 - The shortcuts are the desktop's own custom shortcuts, added the first time
-  Xclipy runs on it. The desktop runs them whatever has the keyboard focus, and
-  lists them with its other shortcuts: Keyboard → Shortcuts → Custom Shortcuts
-  in Cinnamon, Keyboard Shortcuts in MATE, Keyboard → Application Shortcuts in
-  Xfce. If one is removed there, Xclipy doesn't add it back. On other desktops,
-  bind `xclipy --show` and `xclipy --emoji` to keys yourself.
-- The text cursor's position is asked through AT-SPI, the accessibility
-  interface. GTK applications (Text Editor, terminals, ...) give it; the
-  overlay opens in the bottom right corner for applications that don't.
-- Pasting presses Ctrl+V with `xdotool` (X11; the helper on Wayland).
-- Excluded applications are recognised by the window that has the focus when
-  something is copied (libwnck on X11; the helper on Wayland).
-- When an application quits, Cinnamon and MATE keep what it had copied on the
-  clipboard, as plain text. A password copied before stays a password, and a
-  forgotten one isn't kept again.
-- The page in System Settings is `cs_xclipy.py`, installed with Cinnamon's own
-  modules in `/usr/share/cinnamon/cinnamon-settings/modules`. It is the same
-  page as the settings window's (`xclipy/ui/settings_page.py`).
-- In Cinnamon, a helper extension (`xclipy@dimitrysaf`, installed with Xclipy
-  and turned on the first time Xclipy runs there) does on Wayland what an
-  application can't do there itself. See below.
-
-Xclipy:
-
-- is started at login via XDG autostart (`xclipy --background`, in Cinnamon,
-  MATE and Xfce), and by D-Bus activation (`org.x.Xclipy`) when a shortcut or
-  the settings need it.
-- writes to `.xsession-errors`.
-- stores the history, pinned items included, in
-  `~/.local/share/xclipy/history.json` and its images in
-  `~/.local/share/xclipy/images/`, readable only by you. Passwords stay in
-  memory, or, pinned, in the keyring through libsecret when the settings say
-  so: the history file then only has an id where they go, not the password.
-- clears the recent items at the next login when the session ended without
-  logging out (a crash, a power cut), as it does when logging out.
-- stores its settings in GSettings (`org.x.xclipy`).
+  Xclipy runs there, and listed with its other shortcuts (Cinnamon's
+  `org.cinnamon.desktop.keybindings`, MATE's `/org/mate/desktop/keybindings/`,
+  Xfce's `xfce4-keyboard-shortcuts`). Removed there, they aren't added back. On
+  other desktops, bind `xclipy --show` and `xclipy --emoji` yourself.
+- The settings are one page (`xclipy/ui/settings_page.py`), shown in
+  Cinnamon's System Settings by `cs_xclipy.py` (installed in
+  `/usr/share/cinnamon/cinnamon-settings/modules`) and in a window of its own
+  elsewhere.
+- Xclipy writes to `.xsession-errors`.
 
 ### Wayland
 
-Xclipy is made for X11 sessions, Linux Mint's default. Wayland only lets the
-application with the keyboard focus read the clipboard, and no application can
-place its windows or press keys in other applications. In Cinnamon's Wayland
-session, the helper extension does it for Xclipy, on D-Bus
-(`org.x.Xclipy.Cinnamon`, described in `xclipy/helper.py`): it says when
-something is copied and reads it for Xclipy only, tells where the focused
-window is, places the overlay, keeps it out of the window list, and presses
-Ctrl+V. If the helper is turned off (System Settings → Extensions), Xclipy
-only keeps what is on the clipboard when the overlay opens, the overlay opens
-where the compositor puts it, choosing an item only copies it, and no
-application can be excluded (the settings don't show Excluded applications
-then). Other Wayland desktops have the same limits.
+Wayland only lets the application with the keyboard focus read the clipboard,
+and no application can place its windows or press keys in other applications.
+In Cinnamon, a helper extension installed with Xclipy (`xclipy@dimitrysaf`,
+turned on the first time Xclipy runs there) does it for Xclipy over D-Bus
+(`org.x.Xclipy.Cinnamon`, described in `xclipy/helper.py`). It says when
+something is copied and reads it (for Xclipy only), tells which window has the
+focus, places the overlay, keeps it out of the window list, and presses
+Ctrl+V. Without it (turned off, or on other Wayland desktops), Xclipy only
+keeps what is on the clipboard when the overlay opens, choosing an item only
+copies it, and applications can't be excluded. On X11 the helper isn't used.
 
 ## Building from source
 
