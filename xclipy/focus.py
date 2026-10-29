@@ -1,9 +1,8 @@
-"""Where the text cursor is, so the overlay can open next to it.
+"""Which application has the keyboard focus, and whether it's a terminal.
 
 Applications describe their windows to assistive technologies (screen readers)
-over AT-SPI. Xclipy follows which of them has the keyboard focus, and asks it
-where its text cursor is when the overlay opens. Applications that don't take
-part (or a focus on something without text) give no text cursor.
+over AT-SPI. Xclipy follows which of them has the keyboard focus, so it can paste
+with Ctrl+Shift+V into terminals.
 """
 
 import os
@@ -39,12 +38,9 @@ def _atspi():
     return Atspi
 
 
-class CaretTracker:
-    def __init__(self, window_origin=None):
-        """window_origin() is (x, y) of the focused window, or None: on Wayland,
-        where applications only know positions within their windows."""
+class FocusTracker:
+    def __init__(self):
         self._atspi = _atspi()
-        self._window_origin = window_origin
         self._focused = None
         if self._atspi is None:
             return
@@ -73,35 +69,6 @@ class CaretTracker:
         except GLib.Error:
             pass
         return None
-
-    def caret(self):
-        """The text cursor's (x, y, width, height) on the screen, or None."""
-        accessible = self._focused_accessible()
-        if accessible is None:
-            return None
-        try:
-            text = accessible.get_text_iface()
-            if text is None or not accessible.get_state_set().contains(self._atspi.StateType.EDITABLE):
-                return None
-            offset = self._atspi.Text.get_caret_offset(text)
-            origin = (0, 0)
-            coords = self._atspi.CoordType.SCREEN
-            if self._window_origin is not None:
-                origin = self._window_origin()
-                if origin is None:
-                    return None
-                coords = self._atspi.CoordType.WINDOW
-            rect = self._atspi.Text.get_character_extents(text, offset, coords)
-            if rect.height <= 0 and offset > 0:
-                # After the last character there's no character to measure:
-                # use the right edge of the one before.
-                rect = self._atspi.Text.get_character_extents(text, offset - 1, coords)
-                caret = (rect.x + rect.width, rect.y, 0, rect.height) if rect.height > 0 else None
-            else:
-                caret = (rect.x, rect.y, rect.width, rect.height) if rect.height > 0 else None
-            return (caret[0] + origin[0], caret[1] + origin[1], caret[2], caret[3]) if caret else None
-        except GLib.Error:
-            return None
 
     def in_terminal(self):
         accessible = self._focused_accessible()

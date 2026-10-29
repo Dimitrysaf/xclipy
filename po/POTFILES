@@ -5,7 +5,7 @@ data/org.x.Xclipy.desktop.in
 cinnamon-settings/cs_xclipy.py
 xclipy/__init__.py
 xclipy/apps.py
-xclipy/caret.py
+xclipy/focus.py
 xclipy/emoji.py
 xclipy/helper.py
 xclipy/history.py

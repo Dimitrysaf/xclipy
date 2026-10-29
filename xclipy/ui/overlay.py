@@ -1,7 +1,8 @@
 """The overlay: a borderless window with the Clipboard and Emojis tabs.
 
-It opens under the text cursor (or in the bottom right corner of the screen)
-and closes when something is chosen, on Escape, or when it loses the focus.
+It opens at the bottom right of the mouse pointer (in the bottom right corner of
+the screen only without one), can be dragged by its empty parts, and closes when
+something is chosen, on Escape, or when it loses the focus.
 """
 
 import gi
@@ -97,20 +98,28 @@ class Overlay(Gtk.Window):
         settings.connect("changed::show-emojis", lambda *_args: self._show_tabs())
         self._show_tabs()
         self.clipboard_page.on_editing_changed = self._on_editing_changed
+        self.clipboard_page.on_menu_closed = self._after_menu
+        self.clipboard_page.on_drag = self.drag
 
         self.connect("key-press-event", self._on_key_press)
+        # Presses the items, buttons and search don't take move the overlay.
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.connect("button-press-event", self._on_button_press)
         self._hide_source = 0
         self.connect("focus-out-event", self._on_focus_out)
         self.connect("focus-in-event", lambda *_args: self._cancel_hide())
         self.connect("hide", lambda *_args: self._cancel_hide())
         self.connect("delete-event", lambda *_args: self.hide() or True)
 
-    def popup(self, caret=None, tab="clipboard"):
-        """Open on a tab ("clipboard" or "emoji") under the text cursor,
-        (x, y, width, height) on the screen, if known."""
+    def popup(self, tab="clipboard"):
+        """Open on a tab ("clipboard" or "emoji") at the bottom right of the mouse pointer.
+
+        On Wayland an application can't place its windows or know where the pointer
+        is: the helper in Cinnamon places it the same way.
+        """
         display = self.get_display()
         if not is_wayland(display):
-            self.move(*self._position(display, caret))
+            self.move(*self._position(display))
         self.clipboard_page.focus_first()
         if self.tab == tab:
             self._on_tab_changed(self._stack, None)  # start the tab afresh
@@ -118,24 +127,50 @@ class Overlay(Gtk.Window):
         self.show()
         self.present_with_time(_server_time(self.get_window()))
 
-    def _position(self, display, caret):
-        monitor = None
-        if caret is not None:
-            monitor = display.get_monitor_at_point(caret[0], caret[1])
-        else:
-            seat = display.get_default_seat()
-            if seat is not None:
-                _screen, x, y = seat.get_pointer().get_position()
-                monitor = display.get_monitor_at_point(x, y)
+    def _position(self, display):
+        pointer = monitor = None
+        seat = display.get_default_seat()
+        if seat is not None and seat.get_pointer() is not None:
+            _screen, x, y = seat.get_pointer().get_position()
+            pointer = (x, y)
+            monitor = display.get_monitor_at_point(x, y)
         monitor = monitor or display.get_primary_monitor() or display.get_monitor(0)
         area = monitor.get_workarea()
         minimum, _natural = self.get_preferred_size()  # the content can ask for more
         size = (max(WIDTH, minimum.width), max(HEIGHT, minimum.height))
-        return place(size, (area.x, area.y, area.width, area.height), caret)
+        return place(size, (area.x, area.y, area.width, area.height), pointer)
+
+    def _on_button_press(self, _window, event):
+        # Only presses on the overlay's own background (around the tabs, its edges). A
+        # press in the list or on a button bubbles up here too, but there it must stay a
+        # click: once the window manager moves the window, the release never comes back.
+        if Gtk.get_event_widget(event) is not self:
+            return False
+        return self.drag(event)
+
+    def drag(self, event):
+        """Let the window manager move the overlay with the pointer, on X11 and Wayland alike."""
+        if event.button != Gdk.BUTTON_PRIMARY or event.type != Gdk.EventType.BUTTON_PRESS:
+            return False
+        self.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+        return True
 
     def _on_focus_out(self, *_args):
+        if self.clipboard_page.menu_open:
+            return  # its menu took the keyboard for a moment
         if not self._hide_source:
             self._hide_source = GLib.timeout_add(FOCUS_LOST_MS, self._hide_now)
+
+    def _after_menu(self):
+        """A menu closed: if a click elsewhere closed it, the overlay goes too."""
+        self._cancel_hide()
+        self._hide_source = GLib.timeout_add(FOCUS_LOST_MS, self._hide_unless_active)
+
+    def _hide_unless_active(self):
+        self._hide_source = 0
+        if not self.is_active():
+            self.hide()
+        return GLib.SOURCE_REMOVE
 
     def _hide_now(self):
         self._hide_source = 0
@@ -185,9 +220,6 @@ class Overlay(Gtk.Window):
 
     def _on_key_press(self, _window, event):
         if event.keyval == Gdk.KEY_Escape:
-            focus = self.get_focus()
-            if focus is not None and focus.get_ancestor(Gtk.Popover) is not None:
-                return False  # the menu closes
             if self.clipboard_page.editing:
                 self.clipboard_page.cancel_edit()
             elif not self.clipboard_page.clear_search():

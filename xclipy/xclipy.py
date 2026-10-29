@@ -16,7 +16,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, Gtk
 
 from xclipy import APP_ID, SCHEMA_ID, shortcut
-from xclipy.caret import CaretTracker
+from xclipy.focus import FocusTracker
 from xclipy.helper import CinnamonHelper, enable_once
 from xclipy.history import ClipboardHistory
 from xclipy.i18n import _
@@ -37,7 +37,7 @@ class XclipyApplication(Gtk.Application):
         self.settings = None
         self.history = None
         self.watcher = None
-        self.caret = None
+        self.focus = None
         self.overlay = None
         self.settings_window = None
         self._terminal = False
@@ -86,7 +86,7 @@ class XclipyApplication(Gtk.Application):
         self.watcher = ClipboardWatcher(self.history, self.settings, self.helper)
         if self.helper is not None:
             self.helper.on_clipboard_changed = self.watcher.on_helper_copy
-        self.caret = CaretTracker(self._focused_window_origin if self.wayland else None)
+        self.focus = FocusTracker()
         backend = shortcut.backend_for_desktop()
         if backend is not None:
             for kind in shortcut.KINDS:
@@ -117,11 +117,6 @@ class XclipyApplication(Gtk.Application):
     def do_activate(self):
         self.toggle_overlay()
 
-    def _focused_window_origin(self):
-        focused = self.helper.focused_window() if self.helper is not None and self.helper.available else None
-        # No window: an empty origin (Wayland windows may have no pid).
-        return focused[3][:2] if focused and focused[3][2] > 0 else None
-
     def show_settings(self):
         from xclipy.ui.settings_window import SettingsWindow  # only when asked for
         if self.settings_window is None:
@@ -142,11 +137,10 @@ class XclipyApplication(Gtk.Application):
             self.history.on_changed = self.overlay.clipboard_page.refresh
         if not self.overlay.get_visible():
             # Asked now, while the application still has the keyboard focus.
-            self._terminal = self.caret.in_terminal()
-            caret = self.caret.caret()
-            self.overlay.popup(caret, tab)
+            self._terminal = self.focus.in_terminal()
+            self.overlay.popup(tab)
             if self.helper is not None and self.helper.available:
-                self.helper.place_overlay(caret)
+                self.helper.place_overlay()
         elif self.overlay.tab != tab:
             self.overlay.switch_to(tab)
         else:

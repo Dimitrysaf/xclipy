@@ -1,26 +1,33 @@
-"""Where the overlay opens: under the text cursor, or in the bottom right corner."""
+"""Where the overlay opens: at the bottom right of the mouse pointer.
 
-GAP = 4      # between the text cursor and the overlay
-MARGIN = 12  # from the edges of the screen, without a text cursor
+Only when there is no pointer position does it go to the bottom right corner of
+the screen. The Cinnamon helper places it the same way on Wayland.
+"""
+
+GAP = 4      # between the mouse pointer and the overlay
+MARGIN = 12  # from the edges of the screen, without a pointer
 
 
-def place(size, workarea, caret=None):
+def place(size, workarea, pointer=None):
     """The top left corner for an overlay of ``size`` (width, height).
 
     ``workarea`` is the monitor's (x, y, width, height) without its panels and
-    ``caret`` the text cursor's, or None. The overlay goes below the text
-    cursor, above it when there is no room below, and always stays inside the
-    work area.
+    ``pointer`` the mouse pointer's (x, y), or None. Near the right or bottom edge
+    the overlay opens to the left of or above the pointer instead, and it always
+    stays inside the work area.
     """
     width, height = size
     area_x, area_y, area_width, area_height = workarea
     right, bottom = area_x + area_width, area_y + area_height
-    if caret is None:
+    if pointer is None:
         return right - width - MARGIN, bottom - height - MARGIN
-    caret_x, caret_y, _caret_width, caret_height = caret
-    y = caret_y + caret_height + GAP
-    if y + height > bottom and caret_y - GAP - height >= area_y:
-        y = caret_y - GAP - height
-    x = min(max(caret_x, area_x), right - width)
+    pointer_x, pointer_y = pointer
+    x = pointer_x + GAP
+    if x + width > right and pointer_x - GAP - width >= area_x:
+        x = pointer_x - GAP - width
+    y = pointer_y + GAP
+    if y + height > bottom and pointer_y - GAP - height >= area_y:
+        y = pointer_y - GAP - height
+    x = min(max(x, area_x), right - width)
     y = min(max(y, area_y), bottom - height)
     return x, y

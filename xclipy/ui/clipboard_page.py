@@ -50,8 +50,10 @@ class ClipboardPage(Gtk.Box):
         self._on_paste = on_paste
         self._editing = None  # the item being edited
         self.on_editing_changed = lambda editing: None
-        # Item menus fade out: destroying one meanwhile crashes GTK. So their
-        # actions, and rebuilding the list, wait until the menu is gone.
+        self.on_menu_closed = lambda: None
+        self.on_drag = lambda event: False  # the overlay moves itself for a press on a heading
+        # Rebuilding the list destroys the item menus: an item's actions, and
+        # rebuilding the list, wait until its menu is gone.
         self._after_menu = []
         self._refresh_after_menu = False
         self._filter = None  # the kind shown, None for all
@@ -99,8 +101,10 @@ class ClipboardPage(Gtk.Box):
         self._search.connect("activate", lambda _e: self._choose_first_shown())
         self._search.connect("key-press-event", self._on_search_key_press)
         self._search.show()
-        self._filters = Gtk.Popover(position=Gtk.PositionType.TOP)
-        self._filter_button = Gtk.MenuButton(popover=self._filters, tooltip_text=_("Filter"))
+        self._filters = Gtk.Menu()
+        self._filters.connect("hide", lambda _m: self.on_menu_closed())
+        self._filter_button = Gtk.MenuButton(popup=self._filters, direction=Gtk.ArrowType.UP,
+                                             tooltip_text=_("Filter"))
         self._filter_button.add(Gtk.Image.new_from_icon_name("xclipy-filter-symbolic", Gtk.IconSize.BUTTON))
         self._filter_button.get_child().show()
         self._bar.pack_start(self._filter_button, False, False, 0)
@@ -117,18 +121,17 @@ class ClipboardPage(Gtk.Box):
         if not shown:
             self._search.set_text("")
         self._filter_button.set_visible(bool(options))
-        child = self._filters.get_child()
-        if child is not None:
+        for child in self._filters.get_children():
             self._filters.remove(child)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin=6)
+        group = None
         for kind in [None] + options:
-            button = Gtk.ModelButton(text=self._filter_name(kind), role=Gtk.ButtonRole.RADIO,
-                                     active=kind == self._filter)
-            button.kind = kind
-            button.connect("clicked", lambda _b, k=kind: (self._filters.popdown(), self._set_filter(k)))
-            box.pack_start(button, False, False, 0)
-        box.show_all()
-        self._filters.add(box)
+            entry = Gtk.RadioMenuItem.new_with_label_from_widget(group, self._filter_name(kind))
+            group = entry
+            entry.kind = kind
+            entry.set_active(kind == self._filter)
+            entry.connect("toggled", lambda e, k=kind: e.get_active() and k != self._filter and self._set_filter(k))
+            self._filters.append(entry)
+        self._filters.show_all()
         self._filter_button.set_tooltip_text(_("Filter") if self._filter is None else self._filter_name(self._filter))
 
     @staticmethod
@@ -137,8 +140,8 @@ class ClipboardPage(Gtk.Box):
 
     def _set_filter(self, kind):
         self._filter = kind
-        for button in self._filters.get_child().get_children():
-            button.set_property("active", button.kind == kind)
+        for entry in self._filters.get_children():
+            entry.set_active(entry.kind == kind)
         self._filter_button.set_tooltip_text(_("Filter") if kind is None else self._filter_name(kind))
         self._apply_filter()
 
@@ -188,7 +191,7 @@ class ClipboardPage(Gtk.Box):
     # The list
 
     def refresh(self):
-        if any(row.menu_button.get_popover().get_mapped() for row in self._list.get_children()):
+        if any(row.menu_button.get_popup().get_visible() for row in self._list.get_children()):
             self._refresh_after_menu = True
             return
         self._refresh_after_menu = False
@@ -228,7 +231,7 @@ class ClipboardPage(Gtk.Box):
         box = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=8, margin_bottom=8)
         box.pack_start(self._content(item), True, True, 0)
         row.menu_button = Gtk.MenuButton(relief=Gtk.ReliefStyle.NONE, valign=Gtk.Align.CENTER,
-                                         tooltip_text=_("More"), popover=self._menu(item, pinned))
+                                         tooltip_text=_("More"), popup=self._menu(item, pinned))
         row.menu_button.add(Gtk.Image.new_from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON))
         box.pack_end(row.menu_button, False, False, 0)
         row.add(box)
@@ -257,9 +260,9 @@ class ClipboardPage(Gtk.Box):
         return box
 
     def _menu(self, item, pinned):
-        popover = Gtk.Popover(position=Gtk.PositionType.BOTTOM)
-        popover.connect("unmap", lambda _p: GLib.idle_add(self._on_menu_gone))
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, margin=6)
+        """The item's ⋮ menu: a plain menu, without the arrow a popover points with."""
+        menu = Gtk.Menu()
+        menu.connect("hide", lambda _m: GLib.idle_add(self._on_menu_gone))
         entries = []
         if item.text is not None and not item.secret:  # images and passwords can't be edited
             entries.append((_("Edit"), lambda: self._edit(item)))
@@ -270,12 +273,11 @@ class ClipboardPage(Gtk.Box):
             (_("Paste"), lambda: self._on_paste(item)),
         ]
         for label, action in entries:
-            button = Gtk.ModelButton(text=label)  # closes the menu
-            button.connect("clicked", lambda _b, action=action: self._after_menu.append(action))
-            box.pack_start(button, False, False, 0)
-        box.show_all()
-        popover.add(box)
-        return popover
+            entry = Gtk.MenuItem(label=label)  # closes the menu
+            entry.connect("activate", lambda _e, action=action: self._after_menu.append(action))
+            menu.append(entry)
+        menu.show_all()
+        return menu
 
     def _on_menu_gone(self):
         actions, self._after_menu = self._after_menu, []
@@ -283,7 +285,14 @@ class ClipboardPage(Gtk.Box):
             action()
         if self._refresh_after_menu:
             self.refresh()
+        if not actions:
+            self.on_menu_closed()  # closed without choosing: maybe by a click elsewhere
         return GLib.SOURCE_REMOVE
+
+    @property
+    def menu_open(self):
+        return self._filters.get_visible() or any(
+            row.menu_button.get_popup().get_visible() for row in self._list.get_children())
 
     def _header(self, row, before):
         if before is not None and before.pinned == row.pinned:
@@ -294,16 +303,21 @@ class ClipboardPage(Gtk.Box):
         current = row.get_header()
         if current is not None and (current.pinned, current.searching) == (row.pinned, searching):
             return
-        header = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=4, margin_bottom=4)
+        # The heading is something to drag the overlay by: its own event window, so a
+        # press on it isn't the list's (which never starts a drag, or items couldn't be clicked).
+        header = Gtk.EventBox(visible_window=False)
         header.pinned = row.pinned
         header.searching = searching
+        header.connect("button-press-event", lambda _h, event: self.on_drag(event))
+        line = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=4, margin_bottom=4)
         title = Gtk.Label(label=_("Pinned") if row.pinned else _("Recent"), xalign=0)
         title.get_style_context().add_class("dim-label")
-        header.pack_start(title, True, True, 0)
+        line.pack_start(title, True, True, 0)
         if not row.pinned and not searching:
             clear = Gtk.Button(label=_("Clear all"), relief=Gtk.ReliefStyle.NONE)
             clear.connect("clicked", lambda _b: GLib.idle_add(_once, self._history.clear))
-            header.pack_end(clear, False, False, 0)
+            line.pack_end(clear, False, False, 0)
+        header.add(line)
         header.show_all()
         row.set_header(header)
 

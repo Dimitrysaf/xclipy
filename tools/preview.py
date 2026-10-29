@@ -59,7 +59,7 @@ def main():
     settings.set_strv("recent-emoji", ["👍", "😂", "❤️", "🎉"])
     history = ClipboardHistory(os.path.join(folder.name, "history.json"), 50)
     for text in [] if args.empty else reversed(SAMPLES):
-        history.add(text)
+        history.add_text(text)
 
     app = Gtk.Application(application_id="org.x.Xclipy.Preview",
                           flags=Gio.ApplicationFlags.NON_UNIQUE)
@@ -77,7 +77,7 @@ def main():
                           lambda text: print("paste", repr(text)),
                           lambda text: print("chose emoji", repr(text)))
         history.on_changed = overlay.clipboard_page.refresh
-        overlay.popup((200, 150, 1, 18))
+        overlay.popup()
         if args.shots:
             os.makedirs(args.shots, exist_ok=True)
             steps = [

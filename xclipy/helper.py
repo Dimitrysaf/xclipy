@@ -13,14 +13,13 @@ does it for Xclipy, on the session bus:
     method ReadClipboard(s mimetype) -> (ay data)
         The clipboard's content. Only for the owner of org.x.Xclipy.
     method FocusedWindow() -> (s wm_class, s app_id, u pid, (iiii) origin)
-        The window with the keyboard focus, for the excluded applications
-        and where its text cursor is: origin is where the window's own
-        coordinates start on the screen (empty for no window; pid 0 if
-        unknown). Only for the owner of org.x.Xclipy.
-    method PlaceOverlay((iiii) caret)
-        Place Xclipy's overlay under the text cursor (x, y, width, height on
-        the screen; width -1 for none: the bottom right corner), keep it above
-        the other windows and out of the window list.
+        The window with the keyboard focus, for the excluded applications:
+        origin is where the window's own coordinates start on the screen
+        (empty for no window; pid 0 if unknown). Only for the owner of org.x.Xclipy.
+    method PlaceOverlay((iiii) anchor)
+        Place Xclipy's overlay at the bottom right of the mouse pointer (only
+        without one in the bottom right corner), keep it above the other windows
+        and out of the window list. The anchor is unused: (-1, -1, -1, -1).
     method Paste(b terminal)
         Press Ctrl+V (Ctrl+Shift+V in terminals). Only for the owner of org.x.Xclipy.
     property u Version
@@ -87,9 +86,9 @@ class CinnamonHelper:
         """(wm_class, app_id, pid, (x, y, width, height)), or None."""
         return self._call("FocusedWindow", None, "(ssu(iiii))")
 
-    def place_overlay(self, caret):
-        rect = tuple(int(v) for v in caret) if caret else (-1, -1, -1, -1)
-        self._call("PlaceOverlay", GLib.Variant("((iiii))", (rect,)), None, lambda _result: None)
+    def place_overlay(self):
+        """At the mouse pointer, which only Cinnamon knows on Wayland."""
+        self._call("PlaceOverlay", GLib.Variant("((iiii))", ((-1, -1, -1, -1),)), None, lambda _result: None)
 
     def paste(self, terminal):
         self._call("Paste", GLib.Variant("(b)", (terminal,)), None, lambda _result: None)

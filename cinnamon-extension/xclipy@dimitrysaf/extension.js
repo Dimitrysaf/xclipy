@@ -37,7 +37,7 @@ const HelperIface =
                 <arg type="(iiii)" direction="out" name="origin" /> \
             </method> \
             <method name="PlaceOverlay"> \
-                <arg type="(iiii)" direction="in" name="caret" /> \
+                <arg type="(iiii)" direction="in" name="anchor" /> \
             </method> \
             <method name="Paste"> \
                 <arg type="b" direction="in" name="terminal" /> \
@@ -141,8 +141,9 @@ class XclipyHelper {
         invocation.return_value(new GLib.Variant('(ssu(iiii))', result));
     }
 
+    // The anchor is unused: the overlay opens at the mouse pointer, which only
+    // Cinnamon knows on Wayland.
     PlaceOverlayAsync(params, invocation) {
-        let [caret] = params;
         invocation.return_value(null);
         // Right after Xclipy shows it the overlay may not be mapped yet: it
         // has no size until then, and the window manager places it itself.
@@ -151,28 +152,35 @@ class XclipyHelper {
             let metaWindow = global.get_window_actors().map(actor => actor.get_meta_window())
                                                        .find(w => this._isOverlay(w) && w.get_frame_rect().width > 0);
             if (metaWindow) {
-                this._place(metaWindow, caret[2] >= 0 ? caret : null);
+                this._place(metaWindow);
                 return GLib.SOURCE_REMOVE;
             }
             return --tries > 0 ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
         });
     }
 
-    _place(metaWindow, caret) {
-        let monitor = caret ? global.display.get_monitor_index_for_rect(new Meta.Rectangle({x: caret[0], y: caret[1], width: 1, height: 1}))
-                            : global.display.get_current_monitor();
+    // At the bottom right of the mouse pointer, to its left or above it near the
+    // edges; in the bottom right corner only without a pointer (xclipy/placement.py).
+    _place(metaWindow) {
+        let [pointerX, pointerY] = global.get_pointer();
+        let pointer = pointerX >= 0 && pointerY >= 0;
+        let monitor = pointer ? global.display.get_monitor_index_for_rect(new Meta.Rectangle({x: pointerX, y: pointerY, width: 1, height: 1}))
+                              : global.display.get_current_monitor();
         let area = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(monitor);
         let frame = metaWindow.get_frame_rect();
         let right = area.x + area.width, bottom = area.y + area.height;
         let x, y;
-        if (!caret) {
+        if (!pointer) {
             x = right - frame.width - MARGIN;
             y = bottom - frame.height - MARGIN;
         } else {
-            y = caret[1] + caret[3] + GAP;
-            if (y + frame.height > bottom && caret[1] - GAP - frame.height >= area.y)
-                y = caret[1] - GAP - frame.height;
-            x = Math.min(Math.max(caret[0], area.x), right - frame.width);
+            x = pointerX + GAP;
+            if (x + frame.width > right && pointerX - GAP - frame.width >= area.x)
+                x = pointerX - GAP - frame.width;
+            y = pointerY + GAP;
+            if (y + frame.height > bottom && pointerY - GAP - frame.height >= area.y)
+                y = pointerY - GAP - frame.height;
+            x = Math.min(Math.max(x, area.x), right - frame.width);
             y = Math.min(Math.max(y, area.y), bottom - frame.height);
         }
         this._moveAndHold(metaWindow, x, y);
@@ -192,10 +200,16 @@ class XclipyHelper {
                 w.move_frame(true, x, y);
         });
         let unmanaged = metaWindow.connect('unmanaged', () => release());
+        // Being dragged: the new place is the user's.
+        let grabbed = global.display.connect('grab-op-begin', (display, window) => {
+            if (window === metaWindow)
+                release();
+        });
         let release = () => {
             if (held) {
                 metaWindow.disconnect(held);
                 metaWindow.disconnect(unmanaged);
+                global.display.disconnect(grabbed);
                 held = 0;
             }
             return GLib.SOURCE_REMOVE;
