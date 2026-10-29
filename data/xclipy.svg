@@ -1,18 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Mint-Y's app icon frame (a 220 px rounded square inset 18 px, a vertical gradient,
+       a dark ~70% outline, a faint inner highlight, a 1-2 px shadow) in Mint-Y's own
+       clipboard blue. The clipboard is drawn as an object, as in System Settings'
+       Preferences icons: a white sheet with a soft shadow and a dark clip. -->
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffb15e"/>
-      <stop offset="1" stop-color="#f0812b"/>
+    <linearGradient id="bg" x1="0" y1="18" x2="0" y2="238" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#31bdee"/>
+      <stop offset="1" stop-color="#1a9dcb"/>
     </linearGradient>
+    <linearGradient id="sheet" x1="0" y1="60" x2="0" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e4e4e4"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <rect width="256" height="256" fill="#fff"/>
+      <circle cx="128" cy="54" r="7" fill="#000"/>
+    </mask>
   </defs>
-  <!-- The tile, with a soft shadow under it, like Mint-Y's settings icons. -->
-  <rect x="18" y="21" width="220" height="220" rx="46" fill="#000" opacity="0.18"/>
-  <rect x="18" y="18" width="220" height="220" rx="46" fill="url(#tile)"/>
-  <!-- A clipboard: the board, its clip and three lines of text. -->
-  <rect x="70" y="66" width="116" height="138" rx="14" fill="none" stroke="#fff" stroke-width="16"/>
-  <rect x="98" y="46" width="60" height="36" rx="10" fill="#fff"/>
-  <circle cx="128" cy="58" r="6" fill="#f7983f"/>
-  <rect x="94" y="110" width="68" height="13" rx="6.5" fill="#fff"/>
-  <rect x="94" y="136" width="68" height="13" rx="6.5" fill="#fff"/>
-  <rect x="94" y="162" width="42" height="13" rx="6.5" fill="#fff"/>
+  <rect x="18" y="20" width="220" height="220" rx="47" fill="#000" fill-opacity=".18"/>
+  <rect x="19" y="19" width="218" height="218" rx="46" fill="url(#bg)" stroke="#154e61" stroke-opacity=".7" stroke-width="2"/>
+  <rect x="21" y="21" width="214" height="214" rx="44" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+
+  <!-- The sheet, its shadow, and three lines of text. -->
+  <rect x="68" y="66" width="120" height="146" rx="12" fill="#000" fill-opacity=".22" filter="url(#soft)"/>
+  <rect x="66" y="60" width="124" height="148" rx="12" fill="url(#sheet)"/>
+  <rect x="88" y="104" width="80" height="11" rx="5.5" fill="#a9a9a9"/>
+  <rect x="88" y="130" width="80" height="11" rx="5.5" fill="#a9a9a9"/>
+  <rect x="88" y="156" width="50" height="11" rx="5.5" fill="#a9a9a9"/>
+  <!-- The clip, holding the sheet. -->
+  <rect x="96" y="42" width="64" height="34" rx="9" fill="#393939" mask="url(#hole)"/>
 </svg>
