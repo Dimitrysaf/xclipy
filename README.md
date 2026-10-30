@@ -304,3 +304,6 @@ template is up to date.
 Code: GPLv3 or later. See [LICENSES/GPL-3.0.txt](LICENSES/GPL-3.0.txt).
 The emoji list is generated from Unicode data, under the
 [Unicode License](https://www.unicode.org/license.txt).
+
+## AI is used.
+This project was made with Claude. UI is handmade. 
