@@ -1,7 +1,7 @@
-"""Xclipy's settings, as a page of the XApp settings widgets.
+"""Xclipy's settings, as tabs of the XApp settings widgets: General, Passwords, Emojis.
 
-The same page is in Cinnamon's System Settings (cs_xclipy.py) and, on other
-desktops, in Xclipy's own settings window.
+The same tabs are in Cinnamon's System Settings (cs_xclipy.py), in its header
+bar, and on other desktops in Xclipy's own settings window.
 """
 
 import gi
@@ -11,7 +11,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk
 
 from xapp.GSettingsWidgets import (
-    Button, GSettingsComboBox, GSettingsSpinButton, GSettingsSwitch, SettingsLabel, SettingsWidget,
+    Button, GSettingsComboBox, GSettingsSpinButton, GSettingsSwitch, SettingsLabel, SettingsPage, SettingsWidget,
 )
 
 from xclipy import APP_ID, DBUS_PATH, SCHEMA_ID, helper, shortcut
@@ -25,16 +25,28 @@ SHORTCUT_NOTES = {
 }
 
 
-def fill(page, backend=None):
-    """Add the settings to an xapp SettingsPage, with this desktop's shortcuts (or None)."""
-    section = page.add_section()
+def fill(stack, backend=None, show_tabs=None):
+    """Add the settings to an xapp SettingsStack, as the General, Passwords and
+    Emojis tabs, with this desktop's shortcuts (or None).
+
+    While the history is off, a page saying so takes their place, as Cinnamon's
+    Gestures settings do, and show_tabs(False) hides the tabs. Returns a
+    function that shows the right page (and tabs) again.
+    """
+    settings = Gio.Settings.new(SCHEMA_ID)
+    stack.xclipy_settings = settings  # kept with the stack, to hear changes
+    stack.add_named(_disabled_page(settings), "disabled")
+    general = SettingsPage()
+    stack.add_titled(general, "general", _("General"))
+    passwords = SettingsPage()
+    stack.add_titled(passwords, "passwords", _("Passwords"))
+    emojis = SettingsPage()
+    stack.add_titled(emojis, "emojis", _("Emojis"))
+
+    section = general.add_section()
     section.add_row(GSettingsSwitch(_("Enable clipboard history"), SCHEMA_ID, "enabled"))
 
-    # Everything else only while the history is on.
-    def reveal_section(title):
-        return page.add_reveal_section(title, SCHEMA_ID, "enabled")
-
-    section = reveal_section(_("Keyboard shortcuts"))
+    section = general.add_section(_("Keyboard shortcuts"))
     if backend is not None:
         section.add_row(_shortcut_row(_("Open the clipboard history"), shortcut.Shortcut(shortcut.CLIPBOARD, backend)))
         emoji_keys = shortcut.Shortcut(shortcut.EMOJI, backend)
@@ -47,13 +59,12 @@ def fill(page, backend=None):
             if settings.get_boolean(key):
                 emoji_keys.add_default(settings)
                 emoji_row.button.set_accelerator(emoji_keys.binding())
-        page.xclipy_settings = Gio.Settings.new(SCHEMA_ID)  # kept with the page, to hear changes
-        page.xclipy_settings.connect("changed::show-emojis", on_show_emojis)
+        settings.connect("changed::show-emojis", on_show_emojis)
     else:
         section.add_note(_("Set them in your desktop's keyboard settings: “xclipy --show” opens the "
                            "clipboard history and “xclipy --emoji” the emojis."))
 
-    section = reveal_section(_("History"))
+    section = general.add_section(_("History"))
     section.add_row(GSettingsSpinButton(_("Number of recent items"), SCHEMA_ID, "history-size"))
     section.add_row(GSettingsSwitch(_("Paste the chosen item"), SCHEMA_ID, "paste-on-select"))
     section.add_row(GSettingsSwitch(_("Show item types"), SCHEMA_ID, "show-item-types"))
@@ -65,7 +76,14 @@ def fill(page, backend=None):
                            SCHEMA_ID, "delete-old-items")
     section.add_row(Button(_("Clear history"), _clear_history))
 
-    section = reveal_section(_("Passwords"))
+    # Which application copies something is only known on X11, or on Wayland
+    # with the helper in Cinnamon.
+    if not _is_wayland() or helper.running():
+        section = general.add_section(_("Excluded applications"))
+        section.add_row(ExcludedApplications())
+        section.add_note(_("What these applications copy is never kept."))
+
+    section = passwords.add_section()
     section.add_row(GSettingsSwitch(_("Hide passwords"), SCHEMA_ID, "hide-passwords"))
     section.add_row(GSettingsSwitch(_("Treat random-looking text as a password"), SCHEMA_ID,
                                     "recognise-random-passwords"))
@@ -81,19 +99,38 @@ def fill(page, backend=None):
                        "generated passwords and keys. They are only saved in your keyring, when "
                        "pinned and the option above is on."))
 
-    # Which application copies something is only known on X11, or on Wayland
-    # with the helper in Cinnamon.
-    if not _is_wayland() or helper.running():
-        section = reveal_section(_("Excluded applications"))
-        section.add_row(ExcludedApplications())
-        section.add_note(_("What these applications copy is never kept."))
-
-    section = reveal_section(_("Emojis"))
+    section = emojis.add_section()
     section.add_row(GSettingsSwitch(_("Show emojis"), SCHEMA_ID, "show-emojis"))
     tones = [("none", _("Default")), ("light", _("Light")), ("medium-light", _("Medium-light")),
              ("medium", _("Medium")), ("medium-dark", _("Medium-dark")), ("dark", _("Dark"))]
     section.add_reveal_row(GSettingsComboBox(_("Skin tone"), SCHEMA_ID, "emoji-skin-tone", tones),
                            SCHEMA_ID, "show-emojis")
+
+    def show_page(*_args):
+        enabled = settings.get_boolean("enabled")
+        stack.set_visible_child_full("general" if enabled else "disabled", Gtk.StackTransitionType.CROSSFADE)
+        if show_tabs is not None:
+            show_tabs(enabled)
+        return GLib.SOURCE_REMOVE
+    settings.connect("changed::enabled", show_page)
+    # Once System Settings has shown everything, and its tabs.
+    GLib.idle_add(show_page)
+    return show_page
+
+
+def _disabled_page(settings):
+    """What takes the tabs' place while the history is off: a switch to turn it on."""
+    page = SettingsPage()
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, valign=Gtk.Align.START, margin_top=150)
+    page.pack_start(box, True, True, 0)
+    box.pack_start(Gtk.Image(icon_name="xclipy-disabled-symbolic", icon_size=Gtk.IconSize.DIALOG), False, False, 0)
+    label = Gtk.Label()
+    label.set_markup("<big><b>{}</b></big>".format(GLib.markup_escape_text(_("Clipboard history is disabled"))))
+    box.pack_start(label, False, False, 0)
+    switch = Gtk.Switch(halign=Gtk.Align.CENTER)
+    settings.bind("enabled", switch, "active", Gio.SettingsBindFlags.DEFAULT)
+    box.pack_start(switch, False, False, 0)
+    return page
 
 
 def _clear_history(_button):

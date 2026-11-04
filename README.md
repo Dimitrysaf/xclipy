@@ -4,7 +4,7 @@ Clipboard history for the Cinnamon, MATE and Xfce desktops.
 
 <img width="360" height="440" alt="Xclipy's clipboard history: a pinned item, then the recent ones with their types" src="screenshots/clipboard.png" /> <img width="390" height="440" alt="Xclipy's emojis, on the Smileys group" src="screenshots/emoji.png" />
 
-<img width="820" height="1382" alt="Xclipy's page in System Settings" src="screenshots/settings.png" />
+<img width="1000" height="730" alt="Xclipy's settings in System Settings, on the General tab" src="screenshots/settings.png" />
 
 ## Features
 

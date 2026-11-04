@@ -3,16 +3,16 @@
 
 System Settings loads every cs_*.py module in
 /usr/share/cinnamon/cinnamon-settings/modules; this one is installed there.
-The page itself is Xclipy's, the same as in its settings window elsewhere.
+Its tabs (General, Passwords, Emojis) are Xclipy's, the same as in its
+settings window elsewhere; System Settings shows them in its header bar. While
+the history is off, a page saying so takes their place, without tabs, as in
+the Gestures settings.
 """
 
-import gi
-
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gio, GLib
 
 from bin.SettingsWidgets import SidePage
-from xapp.GSettingsWidgets import SettingsPage
+from xapp.GSettingsWidgets import SettingsStack
 
 from xclipy import shortcut
 from xclipy.i18n import _
@@ -30,11 +30,14 @@ class Module:
 
     def on_module_selected(self):
         if self.loaded:
+            # System Settings shows its tabs again when coming back here.
+            GLib.idle_add(self._show_page)
             return
-        page = SettingsPage()
-        settings_page.fill(page, shortcut.backend_for_desktop("X-Cinnamon"))
-        # System Settings grows its window to the page's height; scrolling here keeps the window as it is.
-        scrolled = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
-        scrolled.add(page)
-        scrolled.expand = True  # SidePage packs widgets with this attribute to fill the window
-        self.sidePage.add_widget(scrolled)
+        self.sidePage.stack = SettingsStack()
+        self.sidePage.add_widget(self.sidePage.stack)
+        self._show_page = settings_page.fill(self.sidePage.stack, shortcut.backend_for_desktop("X-Cinnamon"),
+                                             self._show_tabs)
+
+    @staticmethod
+    def _show_tabs(shown):
+        Gio.Application.get_default().stack_switcher.set_opacity(1 if shown else 0)

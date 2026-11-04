@@ -9,9 +9,10 @@ install_data(
   'xclipy.svg',
   install_dir: datadir / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )
-# Themes don't have a filter icon.
+# Themes have neither a filter icon nor a turned off clipboard.
 install_data(
   'icons/xclipy-filter-symbolic.svg',
+  'icons/xclipy-disabled-symbolic.svg',
   install_dir: datadir / 'icons' / 'hicolor' / 'scalable' / 'actions',
 )
 
