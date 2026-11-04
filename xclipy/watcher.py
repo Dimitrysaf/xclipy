@@ -8,6 +8,9 @@ applications.
 
 On Wayland an application only sees the clipboard while it has the keyboard
 focus: there, the copies come from Xclipy's helper in Cinnamon, when it runs.
+
+A program copying in a loop can't flood it: copies are read every
+READ_INTERVAL at most, the latest one always (and the history keeps its sizes).
 """
 
 import hashlib
@@ -28,6 +31,7 @@ PASSWORD_HINT = "x-kde-passwordManagerHint"
 MAX_IMAGE_PIXELS = 4096 * 4096
 TEXT_TYPES = ("text/plain;charset=utf-8", "UTF8_STRING", "text/plain")
 OWN_COPY_SECONDS = 2  # the helper tells about Xclipy's own copies too
+READ_INTERVAL = 0.25  # seconds between two copies read, at least
 
 
 def is_password(target_names):
@@ -54,6 +58,9 @@ class ClipboardWatcher:
         # The passwords seen (as digests, in memory): Cinnamon can offer one
         # again without its mark, and a forgotten one mustn't come back.
         self._secrets = set()
+        self._last_read = 0  # when a copy was last read (monotonic)
+        self._pending = None  # reads the latest copy, when it has to wait
+        self._pending_source = 0
         self._clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         self._clipboard.connect("owner-change", self._on_owner_change)
 
@@ -87,7 +94,26 @@ class ClipboardWatcher:
             self._own_change = False
             return
         if self._wanted():
-            clipboard.request_targets(self._on_targets)
+            self._read_soon(lambda: clipboard.request_targets(self._on_targets))
+
+    def _read_soon(self, read):
+        """Read a copy now, or, when copies come fast, the latest one a moment later."""
+        self._pending = read
+        if self._pending_source:
+            return  # already waiting: the latest copy is read then
+        wait = self._last_read + READ_INTERVAL - time.monotonic()
+        if wait <= 0:
+            self._read_pending()
+        else:
+            self._pending_source = GLib.timeout_add(int(wait * 1000) + 1, self._read_pending)
+
+    def _read_pending(self):
+        self._pending_source = 0
+        read, self._pending = self._pending, None
+        self._last_read = time.monotonic()
+        if read is not None:
+            read()
+        return GLib.SOURCE_REMOVE
 
     def _wanted(self):
         """Whether to keep what was just copied: history on, not an excluded application."""
@@ -101,8 +127,10 @@ class ClipboardWatcher:
         own_text, own_time = self._own_copy
         if time.monotonic() - own_time < OWN_COPY_SECONDS and own_text is None:
             return  # an image Xclipy put there
-        if not self._wanted():
-            return
+        if self._wanted():
+            self._read_soon(lambda: self._read_from_helper(mimetypes, own_text, own_time))
+
+    def _read_from_helper(self, mimetypes, own_text, own_time):
         secret = PASSWORD_HINT in mimetypes
         text_type = next((t for t in TEXT_TYPES if t in mimetypes), None)
         if text_type is not None:
@@ -151,10 +179,9 @@ class ClipboardWatcher:
         if pixbuf is None or pixbuf.get_width() * pixbuf.get_height() > MAX_IMAGE_PIXELS:
             return
         name = image_name(pixbuf)
-        folder = self._history.images_dir
-        path = os.path.join(folder, name)
+        path = self._history.new_image_path(name)
         if not os.path.exists(path):
-            os.makedirs(folder, mode=0o700, exist_ok=True)
+            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
             try:
                 pixbuf.savev(path, "png", [], [])
                 os.chmod(path, 0o600)

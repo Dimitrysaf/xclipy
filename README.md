@@ -46,8 +46,10 @@ type.
 
 ### What is saved
 
-The history is kept in your home folder, readable only by you, so it survives
-a restart. Passwords never go there. Clear history, in the settings, deletes
+You choose what is kept after logging out: everything, only your pinned items
+(the default), or nothing at all. Only that is written to disk, in your home
+folder and readable only by you; the rest stays in memory and is gone when you
+log out. Passwords never go to disk. Clear history, in the settings, deletes
 everything, pinned items included.
 
 ## Architecture
@@ -98,24 +100,33 @@ Unless it is pinned, a password is deleted from the history about a second
 after it is pasted (once the application has taken it), and taken off the
 clipboard too if it's still there. Every 10 seconds, Xclipy forgets passwords older than the set time, and
 deletes items older than the set number of days when that is on. A pinned
-password is only kept beyond the session if "Save pinned passwords" is on:
+password is only kept beyond the session if "Save pinned passwords" is on (and
+something is kept after logging out):
 it is then stored in the keyring through libsecret (schema
 `org.x.Xclipy.Password`, with a random id), and the history file only has that
 id. Turning the option off deletes them from the keyring.
 
 ### Storage
 
-- The history: `~/.local/share/xclipy/history.json` (newest first, pinned items
-  apart, each item with the time it was copied), written atomically, with the
-  folder `0700` and the file `0600`. Text over a million characters isn't
-  kept.
-- Images: PNG files in `~/.local/share/xclipy/images/`, named by a hash of the
-  picture, so the same image is stored once; files no item uses are deleted.
+- What is kept after logging out ("Keep after logging out": everything, the
+  pinned items only, or nothing) is the only part written to disk:
+  `~/.local/share/xclipy/history.json` (newest first, pinned items apart, each
+  item with the time it was copied), written atomically and only when it
+  changes, with the folder `0700` and the file `0600`. With the default, a copy
+  never touches the disk; with nothing kept, there's no file at all.
+- Images: PNG files named by a hash of the picture, so the same image is stored
+  once; files no item uses are deleted. Kept ones are in
+  `~/.local/share/xclipy/images/`, the others in the session's runtime folder
+  (`$XDG_RUNTIME_DIR/xclipy/images/`, in memory and emptied at logout). An
+  image moves between the two when it's pinned or unpinned.
 - The settings, the recently used emoji and the skin tone: GSettings,
   `org.x.xclipy`.
-- At logout the recent items are cleared, when set. The history file also
-  records the session, so a session that ended without logging out (a crash, a
-  power cut) is cleared at the next login.
+- However much is copied, the history stays small: the number of recent items
+  set (200 at most), a million characters of text and 16 megapixels of image
+  each, and 64 MB for all the recent items together (the oldest go first;
+  pinned items don't count). A program copying in a loop is read four times a
+  second at most, the latest copy always; on Wayland the helper doesn't read
+  copies over 16 MB.
 
 ### Opening and pasting
 

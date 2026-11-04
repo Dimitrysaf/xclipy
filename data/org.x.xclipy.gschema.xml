@@ -20,8 +20,13 @@
     <key name="store-images" type="b">
       <default>false</default>
     </key>
-    <key name="clear-on-logout" type="b">
-      <default>true</default>
+    <key name="keep-after-logout" type="s">
+      <choices>
+        <choice value="everything"/>
+        <choice value="pinned"/>
+        <choice value="nothing"/>
+      </choices>
+      <default>'pinned'</default>
     </key>
     <key name="delete-old-items" type="b">
       <default>false</default>

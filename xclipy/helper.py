@@ -11,7 +11,7 @@ does it for Xclipy, on the session bus:
         Something was copied. Only the kinds of content, never the content:
         any application on the bus can see signals.
     method ReadClipboard(s mimetype) -> (ay data)
-        The clipboard's content. Only for the owner of org.x.Xclipy.
+        The clipboard's content, empty above 16 MB. Only for the owner of org.x.Xclipy.
     method FocusedWindow() -> (s wm_class, s app_id, u pid)
         The window with the keyboard focus, for the excluded applications
         (empty for none; pid 0 if unknown). Only for the owner of org.x.Xclipy.

@@ -32,9 +32,12 @@ Open the settings. In Cinnamon, they are also in System Settings, Clipboard.
 .SH FILES
 .TP
 .I ~/.local/share/xclipy/history.json
-The history, pinned items included. Passwords are not in it.
+What is kept after logging out, as set: everything, the pinned items only, or
+nothing (then there is no file). The rest stays in memory. Passwords are not in
+it.
 .TP
 .I ~/.local/share/xclipy/images/
-The copied images, when the settings keep them.
+The copied images that are kept after logging out, when the settings keep
+images. The others are in \fI$XDG_RUNTIME_DIR/xclipy/images/\fP, in memory.
 .SH SEE ALSO
 \fBcinnamon-settings\fP(1)

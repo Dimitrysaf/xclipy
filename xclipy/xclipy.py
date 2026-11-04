@@ -18,7 +18,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk
 from xclipy import APP_ID, SCHEMA_ID, shortcut
 from xclipy.focus import FocusTracker
 from xclipy.helper import CinnamonHelper, enable_once
-from xclipy.history import ClipboardHistory
+from xclipy.history import KEEP_NOTHING, ClipboardHistory
 from xclipy.i18n import _
 from xclipy.passwords import Keyring
 from xclipy.paste import paste
@@ -33,8 +33,7 @@ TIDY_SECONDS = 10  # how often old items and passwords are looked for
 
 class XclipyApplication(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
-                         register_session=True)
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         self.settings = None
         self.history = None
         self.watcher = None
@@ -59,23 +58,21 @@ class XclipyApplication(Gtk.Application):
         Gtk.Application.do_startup(self)
         self.hold()  # keeps watching the clipboard without a window
         self.settings = Gio.Settings.new(SCHEMA_ID)
+        # What isn't kept after logging out stays in memory: its images in the
+        # session's runtime folder, in memory too and emptied at logout.
         path = os.path.join(GLib.get_user_data_dir(), "xclipy", "history.json")
-        session = os.environ.get("XDG_SESSION_ID")
-        keyring = Keyring() if self.settings.get_boolean("save-pinned-passwords") else None
-        self.history = ClipboardHistory(path, self.settings.get_int("history-size"), session, keyring)
+        memory_dir = os.path.join(GLib.get_user_runtime_dir(), "xclipy", "images")
+        keyring = self._keyring()
+        self.history = ClipboardHistory(path, self.settings.get_int("history-size"), keyring,
+                                        self.settings.get_string("keep-after-logout"), memory_dir)
         if keyring is None and self.history.saved_passwords:
             Keyring().delete_all()  # turned off while Xclipy wasn't running
-        # A new login: the last session's recent items go, even if it ended
-        # without logging out (a crash, a power cut).
-        if self.settings.get_boolean("clear-on-logout") and self.history.previous_session not in (None, session):
-            self.history.clear()
-        self.history.save()
-        self.connect("query-end", self._on_logout)
         self.settings.connect("changed::history-size",
                               lambda s, key: self.history.set_size(s.get_int(key)))
         self.settings.connect("changed::enabled", self._on_enabled_changed)
-        self.settings.connect("changed::save-pinned-passwords", lambda s, key: self.history.keep_pinned_passwords(
-            Keyring() if s.get_boolean(key) else None))
+        self.settings.connect("changed::keep-after-logout", self._on_keep_changed)
+        self.settings.connect("changed::save-pinned-passwords",
+                              lambda *_args: self.history.keep_pinned_passwords(self._keyring()))
         # The helper in Cinnamon decides where the overlays open, at the mouse
         # pointer, on X11 and Wayland alike: the window manager itself, like for a
         # right-click menu. On Wayland it also sees the copies and pastes; on X11
@@ -252,9 +249,16 @@ class XclipyApplication(Gtk.Application):
             if emoji is not None:
                 emoji.destroy()
 
-    def _on_logout(self, _application):
-        if self.settings.get_boolean("clear-on-logout"):
-            self.history.clear()
+    def _keyring(self):
+        """Where pinned passwords are saved, if they are: never while nothing is kept after logout."""
+        if self.settings.get_boolean("save-pinned-passwords") and \
+                self.settings.get_string("keep-after-logout") != KEEP_NOTHING:
+            return Keyring()
+        return None
+
+    def _on_keep_changed(self, settings, key):
+        self.history.set_keep(settings.get_string(key))
+        self.history.keep_pinned_passwords(self._keyring())
 
 
 def main():

@@ -70,11 +70,14 @@ def fill(stack, backend=None, show_tabs=None):
     section.add_row(GSettingsSwitch(_("Show item types"), SCHEMA_ID, "show-item-types"))
     section.add_row(GSettingsSwitch(_("Show search bar"), SCHEMA_ID, "show-search"))
     section.add_row(GSettingsSwitch(_("Keep copied images"), SCHEMA_ID, "store-images"))
-    section.add_row(GSettingsSwitch(_("Clear recent items when logging out"), SCHEMA_ID, "clear-on-logout"))
+    keep = [("everything", _("Everything")), ("pinned", _("Pinned items only")), ("nothing", _("Nothing"))]
+    section.add_row(GSettingsComboBox(_("Keep after logging out"), SCHEMA_ID, "keep-after-logout", keep))
     section.add_row(GSettingsSwitch(_("Delete old recent items"), SCHEMA_ID, "delete-old-items"))
     section.add_reveal_row(GSettingsSpinButton(_("Older than"), SCHEMA_ID, "delete-old-days", _("days")),
                            SCHEMA_ID, "delete-old-items")
     section.add_row(Button(_("Clear history"), _clear_history))
+    section.add_note(_("What is kept after logging out is saved on disk, readable only by you. "
+                       "The rest stays in memory."))
 
     # Which application copies something is only known on X11, or on Wayland
     # with the helper in Cinnamon.
@@ -92,8 +95,10 @@ def fill(stack, backend=None, show_tabs=None):
     section.add_reveal_row(
         GSettingsSpinButton(_("After"), SCHEMA_ID, "forget-passwords-minutes", _("minutes")),
         SCHEMA_ID, "forget-passwords")
-    section.add_row(GSettingsSwitch(_("Save pinned passwords in Passwords and Keys"), SCHEMA_ID,
-                                    "save-pinned-passwords"))
+    # The keyring is on disk too: not while nothing is kept after logging out.
+    section.add_reveal_row(GSettingsSwitch(_("Save pinned passwords in Passwords and Keys"), SCHEMA_ID,
+                                           "save-pinned-passwords"),
+                           SCHEMA_ID, "keep-after-logout", ["everything", "pinned"])
     section.add_note(_("Passwords are recognised when the application copying them says so, "
                        "as password managers like KeePassXC do, or when they look random, like "
                        "generated passwords and keys. They are only saved in your keyring, when "

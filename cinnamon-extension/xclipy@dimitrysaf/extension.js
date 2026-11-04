@@ -24,6 +24,8 @@ const PENDING_US = 2 * GLib.USEC_PER_SEC;
 // How long an opening overlay waits, unseen, for the application to take its
 // position (at most; usually one frame).
 const SETTLE_MS = 60;
+// The most read from the clipboard for Xclipy: bigger copies aren't kept.
+const MAX_READ = 16 * 1024 * 1024;
 
 const HelperIface =
     '<node> \
@@ -223,7 +225,8 @@ class XclipyHelper {
             return;
         let [mimetype] = params;
         let stream = Gio.MemoryOutputStream.new_resizable();
-        this._selection.transfer_async(Meta.SelectionType.SELECTION_CLIPBOARD, mimetype, -1, stream, null,
+        // One byte more than the limit, to tell a copy that is too big.
+        this._selection.transfer_async(Meta.SelectionType.SELECTION_CLIPBOARD, mimetype, MAX_READ + 1, stream, null,
                                        (selection, result) => {
             let data = [];
             try {
@@ -233,6 +236,8 @@ class XclipyHelper {
             } catch (e) {
                 // Nothing of that kind on the clipboard.
             }
+            if (data.length > MAX_READ)
+                data = [];  // too big to keep
             invocation.return_value(new GLib.Variant('(ay)', [data]));
         });
     }
