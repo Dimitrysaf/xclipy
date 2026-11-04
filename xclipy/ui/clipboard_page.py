@@ -1,4 +1,4 @@
-"""The Clipboard tab: the pinned items, then what was copied recently.
+"""The clipboard overlay's page: the pinned items, then what was copied recently.
 
 Each item has a menu to edit, delete, pin or paste it. Editing happens on a
 page of its own, in the overlay. A search bar at the bottom (when the settings
@@ -49,9 +49,7 @@ class ClipboardPage(Gtk.Box):
         self._on_choose = on_choose
         self._on_paste = on_paste
         self._editing = None  # the item being edited
-        self.on_editing_changed = lambda editing: None
         self.on_menu_closed = lambda: None
-        self.on_drag = lambda event: False  # the overlay moves itself for a press on a heading
         # Rebuilding the list destroys the item menus: an item's actions, and
         # rebuilding the list, wait until its menu is gone.
         self._after_menu = []
@@ -89,6 +87,7 @@ class ClipboardPage(Gtk.Box):
         self.pack_start(self._stack, True, True, 0)
         for key in ("hide-passwords", "show-item-types", "show-search"):
             settings.connect("changed::" + key, lambda *_args: self.refresh())
+        self._stack.show_all()  # a stack only switches to pages that are shown
         self.refresh()
 
     # The search bar
@@ -303,21 +302,16 @@ class ClipboardPage(Gtk.Box):
         current = row.get_header()
         if current is not None and (current.pinned, current.searching) == (row.pinned, searching):
             return
-        # The heading is something to drag the overlay by: its own event window, so a
-        # press on it isn't the list's (which never starts a drag, or items couldn't be clicked).
-        header = Gtk.EventBox(visible_window=False)
+        header = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=4, margin_bottom=4)
         header.pinned = row.pinned
         header.searching = searching
-        header.connect("button-press-event", lambda _h, event: self.on_drag(event))
-        line = Gtk.Box(spacing=6, margin_start=12, margin_end=6, margin_top=4, margin_bottom=4)
         title = Gtk.Label(label=_("Pinned") if row.pinned else _("Recent"), xalign=0)
         title.get_style_context().add_class("dim-label")
-        line.pack_start(title, True, True, 0)
+        header.pack_start(title, True, True, 0)
         if not row.pinned and not searching:
             clear = Gtk.Button(label=_("Clear all"), relief=Gtk.ReliefStyle.NONE)
             clear.connect("clicked", lambda _b: GLib.idle_add(_once, self._history.clear))
-            line.pack_end(clear, False, False, 0)
-        header.add(line)
+            header.pack_end(clear, False, False, 0)
         header.show_all()
         row.set_header(header)
 
@@ -377,7 +371,6 @@ class ClipboardPage(Gtk.Box):
         self._text.get_buffer().set_text(item.text)
         self._stack.set_visible_child_name("edit")
         self._text.grab_focus()
-        self.on_editing_changed(True)
 
     def _save_edit(self):
         self._history.edit(self._editing, _buffer_text(self._text.get_buffer()))
@@ -392,7 +385,6 @@ class ClipboardPage(Gtk.Box):
         self._editing = None
         self.refresh()
         self._select(item)
-        self.on_editing_changed(False)
 
     def _on_text_key_press(self, _view, event):
         # Ctrl+Enter saves; Enter alone is a new line.

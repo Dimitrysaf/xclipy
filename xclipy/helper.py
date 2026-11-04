@@ -1,4 +1,4 @@
-"""Xclipy's helper in Cinnamon: what only the desktop can do, on Wayland.
+"""Xclipy's helper in Cinnamon: what only the desktop can do.
 
 On Wayland an application only sees the clipboard while it has the keyboard
 focus, can't place its windows or press keys in other applications. The
@@ -12,19 +12,22 @@ does it for Xclipy, on the session bus:
         any application on the bus can see signals.
     method ReadClipboard(s mimetype) -> (ay data)
         The clipboard's content. Only for the owner of org.x.Xclipy.
-    method FocusedWindow() -> (s wm_class, s app_id, u pid, (iiii) origin)
-        The window with the keyboard focus, for the excluded applications:
-        origin is where the window's own coordinates start on the screen
-        (empty for no window; pid 0 if unknown). Only for the owner of org.x.Xclipy.
-    method PlaceOverlay((iiii) anchor)
-        Place Xclipy's overlay at the bottom right of the mouse pointer (only
-        without one in the bottom right corner), keep it above the other windows
-        and out of the window list. The anchor is unused: (-1, -1, -1, -1).
+    method FocusedWindow() -> (s wm_class, s app_id, u pid)
+        The window with the keyboard focus, for the excluded applications
+        (empty for none; pid 0 if unknown). Only for the owner of org.x.Xclipy.
+    method PrepareOverlay((ii) size) -> (i x, i y, s side)
+        Right before Xclipy opens an overlay of ``size``: where it goes, at the
+        mouse pointer by the rule of xclipy/placement.py, and which side of the
+        pointer it takes ("bottom-right", "top-left"...). On X11 Xclipy then
+        opens it there itself; on Wayland, where applications can't place
+        their windows, the helper puts the overlay opening next there as
+        Cinnamon shows it. Overlays are kept above the other windows, out of
+        the window list, and can't be moved or resized.
     method Paste(b terminal)
         Press Ctrl+V (Ctrl+Shift+V in terminals). Only for the owner of org.x.Xclipy.
     property u Version
 
-On X11 Xclipy needs none of it.
+On X11 Xclipy only asks where an overlay goes; on Wayland it needs it all.
 """
 
 from gi.repository import Gio, GLib
@@ -83,12 +86,12 @@ class CinnamonHelper:
                    lambda result: callback(bytes(result[0]) if result else None))
 
     def focused_window(self):
-        """(wm_class, app_id, pid, (x, y, width, height)), or None."""
-        return self._call("FocusedWindow", None, "(ssu(iiii))")
+        """(wm_class, app_id, pid), or None."""
+        return self._call("FocusedWindow", None, "(ssu)")
 
-    def place_overlay(self):
-        """At the mouse pointer, which only Cinnamon knows on Wayland."""
-        self._call("PlaceOverlay", GLib.Variant("((iiii))", ((-1, -1, -1, -1),)), None, lambda _result: None)
+    def prepare_overlay(self, size):
+        """(x, y, side) where the overlay opening next goes, at the mouse pointer, or None."""
+        return self._call("PrepareOverlay", GLib.Variant("((ii))", (tuple(size),)), "(iis)")
 
     def paste(self, terminal):
         self._call("Paste", GLib.Variant("(b)", (terminal,)), None, lambda _result: None)

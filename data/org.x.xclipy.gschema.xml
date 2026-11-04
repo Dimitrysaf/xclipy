@@ -53,7 +53,7 @@
       <default>[]</default>
     </key>
     <key name="show-emojis" type="b">
-      <default>true</default>
+      <default>false</default>
     </key>
     <key name="emoji-skin-tone" type="s">
       <choices>

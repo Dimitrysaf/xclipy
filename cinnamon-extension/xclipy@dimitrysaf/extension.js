@@ -11,14 +11,19 @@ const Main = imports.ui.main;
 const XCLIPY_NAME = 'org.x.Xclipy';
 const HELPER_NAME = 'org.x.Xclipy.Cinnamon';
 const HELPER_PATH = '/org/x/Xclipy/Cinnamon';
-const VERSION = 1;
-// Xclipy's overlay: its application id and (untranslated) title.
+const VERSION = 2;
+// Xclipy's overlays: their application id and (untranslated) title.
 const OVERLAY_APP_ID = 'org.x.Xclipy';
 const OVERLAY_TITLE = 'Xclipy';
-// Where the overlay goes, as Xclipy places it on X11 (xclipy/placement.py).
+// Where an overlay goes, by the rule of xclipy/placement.py.
 const GAP = 1;
 const MARGIN = 12;
-const HOLD_MS = 500;
+// An overlay opens right after Xclipy asked where it goes; a position asked
+// for longer ago than this is stale.
+const PENDING_US = 2 * GLib.USEC_PER_SEC;
+// How long an opening overlay waits, unseen, for the application to take its
+// position (at most; usually one frame).
+const SETTLE_MS = 60;
 
 const HelperIface =
     '<node> \
@@ -34,10 +39,12 @@ const HelperIface =
                 <arg type="s" direction="out" name="wm_class" /> \
                 <arg type="s" direction="out" name="app_id" /> \
                 <arg type="u" direction="out" name="pid" /> \
-                <arg type="(iiii)" direction="out" name="origin" /> \
             </method> \
-            <method name="PlaceOverlay"> \
-                <arg type="(iiii)" direction="in" name="anchor" /> \
+            <method name="PrepareOverlay"> \
+                <arg type="(ii)" direction="in" name="size" /> \
+                <arg type="i" direction="out" name="x" /> \
+                <arg type="i" direction="out" name="y" /> \
+                <arg type="s" direction="out" name="side" /> \
             </method> \
             <method name="Paste"> \
                 <arg type="b" direction="in" name="terminal" /> \
@@ -45,6 +52,30 @@ const HelperIface =
             <property name="Version" type="u" access="read" /> \
         </interface> \
     </node>';
+
+// The top left corner of an overlay of size [width, height] and its side, at the
+// mouse pointer [x, y] (or null: the bottom right corner) in the work area.
+function place(size, area, pointer) {
+    let [width, height] = size;
+    let right = area.x + area.width, bottom = area.y + area.height;
+    if (!pointer)
+        return [right - width - MARGIN, bottom - height - MARGIN, 'bottom-right'];
+    let [pointerX, pointerY] = pointer;
+    let vertical = 'bottom', horizontal = 'right';
+    let x = pointerX + GAP;
+    if (x + width > right && pointerX - GAP - width >= area.x) {
+        x = pointerX - GAP - width;
+        horizontal = 'left';
+    }
+    let y = pointerY + GAP;
+    if (y + height > bottom && pointerY - GAP - height >= area.y) {
+        y = pointerY - GAP - height;
+        vertical = 'top';
+    }
+    x = Math.min(Math.max(x, area.x), right - width);
+    y = Math.min(Math.max(y, area.y), bottom - height);
+    return [x, y, vertical + '-' + horizontal];
+}
 
 class XclipyHelper {
     constructor() {
@@ -60,17 +91,31 @@ class XclipyHelper {
             this._dbusImpl.emit_signal('ClipboardChanged', new GLib.Variant('(as)', [source.get_mimetypes()]));
         });
 
-        // The overlay isn't a window of its own for the window list or Alt+Tab.
+        // The overlays aren't windows of their own for the window list or Alt+Tab.
         this._isInteresting = Main.isInteresting;
         Main.isInteresting = metaWindow => !this._isOverlay(metaWindow) && this._isInteresting(metaWindow);
+        // Where the overlay opening next goes: {x, y, until}.
+        this._pending = null;
         this._windowCreatedId = global.display.connect('window-created', (display, metaWindow) => {
-            if (this._isOverlay(metaWindow))
-                metaWindow.make_above();
+            this._whenIdentified(metaWindow);
+        });
+        this._mapId = global.window_manager.connect('map', (wm, actor) => this._onMap(actor));
+        // Overlays can't be moved or resized.
+        this._grabId = global.display.connect('grab-op-begin', (display, object, metaWindow, op) => {
+            // Ended right after it began, outside the signal that announces it.
+            if (metaWindow && this._isOverlay(metaWindow))
+                GLib.idle_add(GLib.PRIORITY_HIGH, () => {
+                    if (display.get_grab_op() !== Meta.GrabOp.NONE)
+                        display.end_grab_op(global.get_current_time());
+                    return GLib.SOURCE_REMOVE;
+                });
         });
     }
 
     destroy() {
         Main.isInteresting = this._isInteresting;
+        global.display.disconnect(this._grabId);
+        global.window_manager.disconnect(this._mapId);
         global.display.disconnect(this._windowCreatedId);
         this._selection.disconnect(this._ownerChangedId);
         Gio.bus_unown_name(this._nameId);
@@ -82,6 +127,74 @@ class XclipyHelper {
         return metaWindow.get_gtk_application_id() === OVERLAY_APP_ID
             && metaWindow.get_title() === OVERLAY_TITLE;
     }
+
+    // A new window only says what it is a moment later, on Wayland, but
+    // before it is shown.
+    _whenIdentified(metaWindow) {
+        let ids = [];
+        let forget = () => {
+            ids.forEach(id => metaWindow.disconnect(id));
+            ids = [];
+        };
+        let check = () => {
+            if (!this._isOverlay(metaWindow))
+                return;
+            forget();
+            metaWindow.make_above();
+            metaWindow.stick();
+            let pending = this._pending;
+            this._pending = null;
+            if (pending && GLib.get_monotonic_time() < pending.until)
+                metaWindow._xclipyPosition = [pending.x, pending.y];
+        };
+        ids = ['notify::title', 'notify::gtk-application-id'].map(signal => metaWindow.connect(signal, check));
+        ids.push(metaWindow.connect('unmanaged', forget));
+        check();
+    }
+
+    // Step two, on Wayland: Cinnamon places a new window itself as it shows it,
+    // where it sees fit, and no application can choose. So the overlay opens
+    // unseen, goes where step one said, and only then appears: it never moves
+    // on the screen. (The application takes its position at its next frame,
+    // until then Cinnamon may put it back where it first placed it.) On X11
+    // Xclipy opens it there itself.
+    _onMap(actor) {
+        let metaWindow = actor.meta_window;
+        let position = metaWindow._xclipyPosition;
+        if (!position || metaWindow.get_client_type() !== Meta.WindowClientType.WAYLAND)
+            return;
+        delete metaWindow._xclipyPosition;
+        let [x, y] = position;
+        actor.remove_all_transitions();  // Cinnamon's opening animation starts from where it placed it
+        actor.opacity = 0;
+        let movedBack = false;
+        let settled = 0, timeout = 0;
+        let reveal = () => {
+            if (settled) {
+                metaWindow.disconnect(settled);
+                settled = 0;
+                GLib.source_remove(timeout);
+                actor.opacity = 255;
+            }
+            return GLib.SOURCE_REMOVE;
+        };
+        let atPosition = () => {
+            let frame = metaWindow.get_frame_rect();
+            return frame.x === x && frame.y === y;
+        };
+        settled = metaWindow.connect('position-changed', () => {
+            if (!atPosition()) {
+                movedBack = true;
+                metaWindow.move_frame(false, x, y);
+            } else if (movedBack) {
+                reveal();
+            }
+        });
+        timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SETTLE_MS, reveal);
+        metaWindow.connect('unmanaged', reveal);
+        metaWindow.move_frame(false, x, y);
+    }
+
 
     get Version() {
         return VERSION;
@@ -128,93 +241,28 @@ class XclipyHelper {
         if (!this._fromXclipy(invocation))
             return;
         let metaWindow = global.display.focus_window;
-        let result = ['', '', 0, [0, 0, 0, 0]];
-        if (metaWindow && !this._isOverlay(metaWindow)) {
-            // Where the application's own window coordinates start: its whole
-            // surface (shadows too) if it draws its decorations, else inside ours.
-            let rect = metaWindow.get_client_type() === Meta.WindowClientType.WAYLAND || metaWindow.is_client_decorated()
-                ? metaWindow.get_buffer_rect()
-                : metaWindow.frame_rect_to_client_rect(metaWindow.get_frame_rect());
+        let result = ['', '', 0];
+        if (metaWindow && !this._isOverlay(metaWindow))
             result = [metaWindow.get_wm_class() || '', metaWindow.get_gtk_application_id() || '',
-                      Math.max(0, metaWindow.get_pid()), [rect.x, rect.y, rect.width, rect.height]];
-        }
-        invocation.return_value(new GLib.Variant('(ssu(iiii))', result));
+                      Math.max(0, metaWindow.get_pid())];
+        invocation.return_value(new GLib.Variant('(ssu)', result));
     }
 
-    // The anchor is unused: the overlay opens at the mouse pointer, which only
-    // Cinnamon knows on Wayland.
-    PlaceOverlayAsync(params, invocation) {
-        invocation.return_value(null);
-        // Right after Xclipy shows it the overlay may not be mapped yet: it
-        // has no size until then, and the window manager places it itself.
-        let tries = 20;
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25, () => {
-            let metaWindow = global.get_window_actors().map(actor => actor.get_meta_window())
-                                                       .find(w => this._isOverlay(w) && w.get_frame_rect().width > 0);
-            if (metaWindow) {
-                this._place(metaWindow);
-                return GLib.SOURCE_REMOVE;
-            }
-            return --tries > 0 ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
-        });
-    }
-
-    // At the bottom right of the mouse pointer, to its left or above it near the
-    // edges; in the bottom right corner only without a pointer (xclipy/placement.py).
-    _place(metaWindow) {
+    // Step one of opening an overlay: where it goes, at the mouse pointer (which
+    // only Cinnamon knows on Wayland), and on which side of it.
+    PrepareOverlayAsync(params, invocation) {
+        if (!this._fromXclipy(invocation))
+            return;
+        let [size] = params;
         let [pointerX, pointerY] = global.get_pointer();
-        let pointer = pointerX >= 0 && pointerY >= 0;
-        let monitor = pointer ? global.display.get_monitor_index_for_rect(new Meta.Rectangle({x: pointerX, y: pointerY, width: 1, height: 1}))
-                              : global.display.get_current_monitor();
+        let pointer = pointerX >= 0 && pointerY >= 0 ? [pointerX, pointerY] : null;
+        let monitor = pointer
+            ? global.display.get_monitor_index_for_rect(new Meta.Rectangle({x: pointerX, y: pointerY, width: 1, height: 1}))
+            : global.display.get_current_monitor();
         let area = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(monitor);
-        let frame = metaWindow.get_frame_rect();
-        let right = area.x + area.width, bottom = area.y + area.height;
-        let x, y;
-        if (!pointer) {
-            x = right - frame.width - MARGIN;
-            y = bottom - frame.height - MARGIN;
-        } else {
-            x = pointerX + GAP;
-            if (x + frame.width > right && pointerX - GAP - frame.width >= area.x)
-                x = pointerX - GAP - frame.width;
-            y = pointerY + GAP;
-            if (y + frame.height > bottom && pointerY - GAP - frame.height >= area.y)
-                y = pointerY - GAP - frame.height;
-            x = Math.min(Math.max(x, area.x), right - frame.width);
-            y = Math.min(Math.max(y, area.y), bottom - frame.height);
-        }
-        this._moveAndHold(metaWindow, x, y);
-        metaWindow.make_above();
-        metaWindow.stick();
-        metaWindow.activate(global.get_current_time());
-    }
-
-    // On Wayland the window manager can still apply where it first put the
-    // overlay when the application acknowledges that late, after the move:
-    // keep the overlay where it belongs for a moment.
-    _moveAndHold(metaWindow, x, y) {
-        metaWindow.move_frame(true, x, y);
-        let held = metaWindow.connect('position-changed', w => {
-            let frame = w.get_frame_rect();
-            if (frame.x !== x || frame.y !== y)
-                w.move_frame(true, x, y);
-        });
-        let unmanaged = metaWindow.connect('unmanaged', () => release());
-        // Being dragged: the new place is the user's.
-        let grabbed = global.display.connect('grab-op-begin', (display, window) => {
-            if (window === metaWindow)
-                release();
-        });
-        let release = () => {
-            if (held) {
-                metaWindow.disconnect(held);
-                metaWindow.disconnect(unmanaged);
-                global.display.disconnect(grabbed);
-                held = 0;
-            }
-            return GLib.SOURCE_REMOVE;
-        };
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, HOLD_MS, release);
+        let [x, y, side] = place(size, area, pointer);
+        this._pending = {x: x, y: y, until: GLib.get_monotonic_time() + PENDING_US};
+        invocation.return_value(new GLib.Variant('(iis)', [x, y, side]));
     }
 
     PasteAsync(params, invocation) {

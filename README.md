@@ -2,7 +2,7 @@
 
 Clipboard history for the Cinnamon, MATE and Xfce desktops.
 
-<img width="390" height="440" alt="Xclipy's Clipboard tab: a pinned item, then the recent ones with their types" src="screenshots/clipboard.png" /> <img width="390" height="440" alt="Xclipy's Emojis tab, on the Smileys group" src="screenshots/emoji.png" />
+<img width="360" height="440" alt="Xclipy's clipboard history: a pinned item, then the recent ones with their types" src="screenshots/clipboard.png" /> <img width="390" height="440" alt="Xclipy's emojis, on the Smileys group" src="screenshots/emoji.png" />
 
 <img width="820" height="1382" alt="Xclipy's page in System Settings" src="screenshots/settings.png" />
 
@@ -10,9 +10,9 @@ Clipboard history for the Cinnamon, MATE and Xfce desktops.
 
 ### Clipboard history
 
-Super + V opens an overlay with your clipboard history. It opens right under
-your text cursor, so your eyes (and your mouse) don't have to travel far.
-Choose an item and it's pasted where you were typing.
+Super + V opens an overlay with your clipboard history. It opens right at your
+mouse pointer, like a right-click menu, so your eyes (and your mouse) don't
+have to travel far. Choose an item and it's pasted where you were typing.
 
 Items are sorted into types, like links, email addresses, phone numbers,
 files, color codes (with a little swatch of the color) and passwords. Passwords
@@ -30,17 +30,19 @@ scrolling.
 
 ### Emojis
 
-Super + . opens the Emojis tab, because sometimes words aren't enough 🙂. Every
-emoji is there, in groups, with search, your recently used ones first and the
-skin tone you prefer. Never use them? You know the drill: turn them off.
+Sometimes words aren't enough 🙂. Turn on Show emojis in the settings, and
+Super + . opens an overlay of its own with every emoji, in groups, with
+search, your recently used ones first and the skin tone you prefer. They're
+off by default: it's a clipboard manager first, and emojis left off don't
+take a byte of memory.
 
 ### Keyboard
 
 Your hands never have to leave the keyboard: arrows to move, Enter to choose,
-the Menu key (or Shift+F10) for an item's menu, Escape to close, Ctrl+Tab to
-switch tabs. While editing, Ctrl+Enter saves and Escape cancels. With the
-search bar, just type to search, Down goes back to the list and Escape clears
-the search. In the Emojis tab, just type.
+the Menu key (or Shift+F10) for an item's menu, Escape to close. While editing,
+Ctrl+Enter saves and Escape cancels. With the search bar, just type to search,
+Down goes back to the list and Escape clears the search. With the emojis, just
+type.
 
 ### What is saved
 
@@ -54,7 +56,10 @@ everything, pinned items included.
 window (`xclipy --background`, XDG autostart) and watches the clipboard. The
 keyboard shortcuts run `xclipy --show` and `xclipy --emoji`, which reach the
 running Xclipy over D-Bus (`org.x.Xclipy`, which also starts it if needed) and
-open or close the overlay on that tab. `xclipy --settings` opens the settings.
+open or close the clipboard overlay or the emoji overlay. The emoji overlay is
+only made the first time it opens, and dropped when the emojis are turned off;
+Super+. is only added to the desktop's shortcuts the first time they're turned
+on. `xclipy --settings` opens the settings.
 
 ### Watching the clipboard
 
@@ -114,10 +119,14 @@ id. Turning the option off deletes them from the keyring.
 
 ### Opening and pasting
 
-- The text cursor's position comes from AT-SPI, the accessibility interface,
-  for the focused text field. GTK applications (Text Editor, terminals...)
-  give it; the overlay opens in the bottom right corner of the screen for
-  those that don't.
+- Where an overlay opens is decided before it opens (`xclipy/placement.py`):
+  at the mouse pointer, below it and to its right; above it when there is no
+  room below, to its left when there is no room on the right (in the bottom
+  right corner of the screen only without a pointer). In Cinnamon the helper
+  decides, as the window manager: on Wayland only it knows the pointer. The
+  overlay never moves after that: it can't be dragged or resized.
+- Which application has the keyboard focus, and whether it's a terminal, comes
+  from AT-SPI, the accessibility interface (`xclipy/focus.py`).
 - Pasting puts the item on the clipboard and presses Ctrl+V with `xdotool`
   (X11; the helper on Wayland), or Ctrl+Shift+V when AT-SPI says the focused
   application is a terminal.
@@ -145,10 +154,16 @@ In Cinnamon, a helper extension installed with Xclipy (`xclipy@dimitrysaf`,
 turned on the first time Xclipy runs there) does it for Xclipy over D-Bus
 (`org.x.Xclipy.Cinnamon`, described in `xclipy/helper.py`). It says when
 something is copied and reads it (for Xclipy only), tells which window has the
-focus, places the overlay, keeps it out of the window list, and presses
-Ctrl+V. Without it (turned off, or on other Wayland desktops), Xclipy only
-keeps what is on the clipboard when the overlay opens, choosing an item only
-copies it, and applications can't be excluded. On X11 the helper isn't used.
+focus, and presses Ctrl+V. Right before an overlay opens, the helper says
+where it goes, at the mouse pointer, and on which side of it; then it puts the
+overlay there as Cinnamon shows it. Cinnamon places every new window itself,
+so the overlay is kept invisible until it is in its place (a few frames), and
+never seen anywhere else. The helper also keeps the overlays out of the window
+list, and stops any attempt to move or resize them. Without it (turned off, or
+on other Wayland desktops), Xclipy only keeps what is on the clipboard when the
+overlay opens, which opens where the compositor puts it, choosing an item only
+copies it, and applications can't be excluded. On X11 the helper only says
+where the overlays go, and Xclipy opens them there itself.
 
 ## Building from source
 

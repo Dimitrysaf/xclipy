@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-"""Open Xclipy's overlay on a sample history, optionally saving screenshots.
+"""Open Xclipy's clipboard overlay on a sample history (or, with --emoji, the emoji
+overlay), optionally saving screenshots.
 
     python3 tools/preview.py                  # interactive
     xvfb-run -a python3 tools/preview.py --shots /tmp/shots   # headless PNGs
@@ -40,6 +41,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--shots", metavar="FOLDER", help="save screenshots there and quit")
     parser.add_argument("--empty", action="store_true", help="start with an empty history")
+    parser.add_argument("--emoji", action="store_true", help="the emoji overlay instead")
     args = parser.parse_args()
 
     folder = tempfile.TemporaryDirectory()
@@ -53,7 +55,7 @@ def main():
 
     from xclipy import SCHEMA_ID
     from xclipy.history import ClipboardHistory
-    from xclipy.ui.overlay import Overlay
+    from xclipy.ui.overlay import ClipboardOverlay, EmojiOverlay
 
     settings = Gio.Settings.new(SCHEMA_ID)
     settings.set_strv("recent-emoji", ["👍", "😂", "❤️", "🎉"])
@@ -73,26 +75,30 @@ def main():
         print("saved", path, flush=True)
 
     def on_activate(application):
-        overlay = Overlay(application, history, settings, lambda text: print("chose", repr(text)),
-                          lambda text: print("paste", repr(text)),
-                          lambda text: print("chose emoji", repr(text)))
-        history.on_changed = overlay.clipboard_page.refresh
-        overlay.popup()
+        if args.emoji:
+            overlay = EmojiOverlay(application, settings, lambda text: print("chose emoji", repr(text)))
+        else:
+            overlay = ClipboardOverlay(application, history, settings, lambda item: print("chose", repr(item.text)),
+                                       lambda item: print("paste", repr(item.text)))
+            history.on_changed = overlay.page.refresh
+        overlay.popup((200, 150))
         if args.shots:
             os.makedirs(args.shots, exist_ok=True)
-            steps = [
-                (lambda: capture(overlay, "01-clipboard.png")),
-                (lambda: overlay._stack.set_visible_child_name("emoji")),
-                (lambda: capture(overlay, "02-emoji-recent.png")),
-                (lambda: overlay.emoji_page._group_buttons[2].set_active(True)),
-                (lambda: capture(overlay, "03-emoji-animals.png")),
-                (lambda: overlay.emoji_page._search.set_text("cat")),
-                (lambda: capture(overlay, "04-emoji-search.png")),
-                (lambda: history.clear()),
-                (lambda: overlay._stack.set_visible_child_name("clipboard")),
-                (lambda: capture(overlay, "05-clipboard-empty.png")),
-                application.quit,
-            ]
+            if args.emoji:
+                steps = [
+                    (lambda: capture(overlay, "01-emoji-recent.png")),
+                    (lambda: overlay.page._group_buttons[2].set_active(True)),
+                    (lambda: capture(overlay, "02-emoji-animals.png")),
+                    (lambda: overlay.page._search.set_text("cat")),
+                    (lambda: capture(overlay, "03-emoji-search.png")),
+                ]
+            else:
+                steps = [
+                    (lambda: capture(overlay, "01-clipboard.png")),
+                    (lambda: history.clear()),
+                    (lambda: capture(overlay, "02-clipboard-empty.png")),
+                ]
+            steps.append(application.quit)
 
             def step():
                 steps.pop(0)()

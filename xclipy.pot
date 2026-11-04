@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: xclipy\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 08:18+0000\n"
+"POT-Creation-Date: 2026-11-04 18:18+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,13 +18,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: data/cinnamon-settings-xclipy.desktop.in:4
-#: data/org.x.Xclipy.Settings.desktop.in:4 cinnamon-settings/cs_xclipy.py:24
-#: xclipy/ui/overlay.py:89 xclipy/ui/settings_window.py:17
+#: data/org.x.Xclipy.Settings.desktop.in:4 cinnamon-settings/cs_xclipy.py:29
+#: xclipy/ui/settings_window.py:17
 msgid "Clipboard"
 msgstr ""
 
 #: data/cinnamon-settings-xclipy.desktop.in:5
-#: data/org.x.Xclipy.Settings.desktop.in:5 cinnamon-settings/cs_xclipy.py:19
+#: data/org.x.Xclipy.Settings.desktop.in:5 cinnamon-settings/cs_xclipy.py:24
 msgid "Clipboard history and emoji"
 msgstr ""
 
@@ -45,7 +45,7 @@ msgstr ""
 msgid "Paste something you copied earlier, or an emoji"
 msgstr ""
 
-#: cinnamon-settings/cs_xclipy.py:23
+#: cinnamon-settings/cs_xclipy.py:28
 msgid "clipboard, history, copy, paste, emoji"
 msgstr ""
 
@@ -89,11 +89,11 @@ msgstr ""
 msgid "Pinned password from the clipboard history"
 msgstr ""
 
-#: xclipy/shortcut.py:31 xclipy/ui/overlay.py:55
+#: xclipy/shortcut.py:31 xclipy/ui/overlay.py:192
 msgid "Clipboard history"
 msgstr ""
 
-#: xclipy/shortcut.py:32 xclipy/ui/overlay.py:90 xclipy/ui/settings_page.py:82
+#: xclipy/shortcut.py:32 xclipy/ui/overlay.py:211 xclipy/ui/settings_page.py:91
 msgid "Emojis"
 msgstr ""
 
@@ -121,7 +121,7 @@ msgstr ""
 msgid "Colors"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:27 xclipy/ui/settings_page.py:59
+#: xclipy/ui/clipboard_page.py:27 xclipy/ui/settings_page.py:68
 msgid "Passwords"
 msgstr ""
 
@@ -141,60 +141,60 @@ msgstr ""
 msgid "What you copy shows up here."
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:103 xclipy/ui/clipboard_page.py:132
-#: xclipy/ui/clipboard_page.py:142
+#: xclipy/ui/clipboard_page.py:106 xclipy/ui/clipboard_page.py:134
+#: xclipy/ui/clipboard_page.py:144
 msgid "Filter"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:136
+#: xclipy/ui/clipboard_page.py:138
 msgid "All items"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:231
+#: xclipy/ui/clipboard_page.py:233
 msgid "More"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:244 xclipy/ui/clipboard_page.py:253
+#: xclipy/ui/clipboard_page.py:246 xclipy/ui/clipboard_page.py:255
 msgid "Password"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:265 xclipy/ui/clipboard_page.py:336
+#: xclipy/ui/clipboard_page.py:267 xclipy/ui/clipboard_page.py:344
 msgid "Edit"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:267
+#: xclipy/ui/clipboard_page.py:269
 msgid "Delete"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:268
+#: xclipy/ui/clipboard_page.py:270
 msgid "Unpin"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:268
+#: xclipy/ui/clipboard_page.py:270
 msgid "Pin"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:270
+#: xclipy/ui/clipboard_page.py:272
 msgid "Paste"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:300
+#: xclipy/ui/clipboard_page.py:308
 msgid "Pinned"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:300
+#: xclipy/ui/clipboard_page.py:308
 msgid "Recent"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:304
+#: xclipy/ui/clipboard_page.py:312
 msgid "Clear all"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:347 xclipy/ui/settings_page.py:219
+#: xclipy/ui/clipboard_page.py:355 xclipy/ui/settings_page.py:233
 msgid "Cancel"
 msgstr ""
 
-#: xclipy/ui/clipboard_page.py:349
+#: xclipy/ui/clipboard_page.py:357
 msgid "Save"
 msgstr ""
 
@@ -238,89 +238,89 @@ msgstr ""
 msgid "Open the clipboard history"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:40
+#: xclipy/ui/settings_page.py:41
 msgid "Open the emojis"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:44
+#: xclipy/ui/settings_page.py:53
 msgid ""
 "Set them in your desktop's keyboard settings: “xclipy --show” opens the "
 "clipboard history and “xclipy --emoji” the emojis."
 msgstr ""
 
-#: xclipy/ui/settings_page.py:47
+#: xclipy/ui/settings_page.py:56
 msgid "History"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:48
+#: xclipy/ui/settings_page.py:57
 msgid "Number of recent items"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:49
+#: xclipy/ui/settings_page.py:58
 msgid "Paste the chosen item"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:50
+#: xclipy/ui/settings_page.py:59
 msgid "Show item types"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:51
+#: xclipy/ui/settings_page.py:60
 msgid "Show search bar"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:52
+#: xclipy/ui/settings_page.py:61
 msgid "Keep copied images"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:53
+#: xclipy/ui/settings_page.py:62
 msgid "Clear recent items when logging out"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:54
+#: xclipy/ui/settings_page.py:63
 msgid "Delete old recent items"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:55
+#: xclipy/ui/settings_page.py:64
 msgid "Older than"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:55
+#: xclipy/ui/settings_page.py:64
 msgid "days"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:57
+#: xclipy/ui/settings_page.py:66
 msgid "Clear history"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:60
+#: xclipy/ui/settings_page.py:69
 msgid "Hide passwords"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:61
+#: xclipy/ui/settings_page.py:70
 msgid "Treat random-looking text as a password"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:63
+#: xclipy/ui/settings_page.py:72
 msgid "Delete passwords once pasted"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:64
+#: xclipy/ui/settings_page.py:73
 msgid "Forget passwords after a while"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:66
+#: xclipy/ui/settings_page.py:75
 msgid "After"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:66
+#: xclipy/ui/settings_page.py:75
 msgid "minutes"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:68
+#: xclipy/ui/settings_page.py:77
 msgid "Save pinned passwords in Passwords and Keys"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:70
+#: xclipy/ui/settings_page.py:79
 msgid ""
 "Passwords are recognised when the application copying them says so, as "
 "password managers like KeePassXC do, or when they look random, like "
@@ -328,96 +328,96 @@ msgid ""
 "pinned and the option above is on."
 msgstr ""
 
-#: xclipy/ui/settings_page.py:78
+#: xclipy/ui/settings_page.py:87
 msgid "Excluded applications"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:80
+#: xclipy/ui/settings_page.py:89
 msgid "What these applications copy is never kept."
 msgstr ""
 
-#: xclipy/ui/settings_page.py:83
+#: xclipy/ui/settings_page.py:92
 msgid "Show emojis"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:84
+#: xclipy/ui/settings_page.py:93
 msgid "Default"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:84
+#: xclipy/ui/settings_page.py:93
 msgid "Light"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:84
+#: xclipy/ui/settings_page.py:93
 msgid "Medium-light"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:85
+#: xclipy/ui/settings_page.py:94
 msgid "Medium"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:85
+#: xclipy/ui/settings_page.py:94
 msgid "Medium-dark"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:85
+#: xclipy/ui/settings_page.py:94
 msgid "Dark"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:86
+#: xclipy/ui/settings_page.py:95
 msgid "Skin tone"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:111
+#: xclipy/ui/settings_page.py:120
 msgid ""
 "Click, then press the new keys. Escape cancels, Backspace removes the "
 "shortcut."
 msgstr ""
 
-#: xclipy/ui/settings_page.py:123
+#: xclipy/ui/settings_page.py:132
 msgid "New shortcut…"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:128
+#: xclipy/ui/settings_page.py:137
 msgid "None"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:177
+#: xclipy/ui/settings_page.py:191
 msgid "Add an application…"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:188
+#: xclipy/ui/settings_page.py:202
 msgid "No applications"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:199
+#: xclipy/ui/settings_page.py:213
 msgid "Remove"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:217
+#: xclipy/ui/settings_page.py:231
 msgid "Add an application"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:220
+#: xclipy/ui/settings_page.py:234
 msgid "Add"
 msgstr ""
 
-#: xclipy/ui/settings_page.py:227
+#: xclipy/ui/settings_page.py:241
 msgid "Search applications"
 msgstr ""
 
-#: xclipy/xclipy.py:46
+#: xclipy/xclipy.py:47
 msgid "Keep the clipboard history without opening it"
 msgstr ""
 
-#: xclipy/xclipy.py:49
+#: xclipy/xclipy.py:50
 msgid "Open the clipboard history, or close it when it is open"
 msgstr ""
 
-#: xclipy/xclipy.py:52
+#: xclipy/xclipy.py:53
 msgid "Open the emojis, or close them when they are open"
 msgstr ""
 
-#: xclipy/xclipy.py:55
+#: xclipy/xclipy.py:56
 msgid "Open the settings"
 msgstr ""

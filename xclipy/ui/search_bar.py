@@ -1,4 +1,4 @@
-"""The search bar at the bottom of both tabs: a search field, maybe a button."""
+"""The search bar at the bottom of both overlays: a search field, maybe a button."""
 
 import gi
 

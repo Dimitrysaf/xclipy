@@ -87,7 +87,7 @@ class FocusedApplication:
         focused = self._helper.focused_window() if self._helper is not None and self._helper.available else None
         if not focused:
             return set()
-        wm_class, app_id, pid, _origin = focused
+        wm_class, app_id, pid = focused
         return _names(wm_class, app_id, pid)
 
 

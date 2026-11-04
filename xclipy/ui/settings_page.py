@@ -37,9 +37,18 @@ def fill(page, backend=None):
     section = reveal_section(_("Keyboard shortcuts"))
     if backend is not None:
         section.add_row(_shortcut_row(_("Open the clipboard history"), shortcut.Shortcut(shortcut.CLIPBOARD, backend)))
-        section.add_reveal_row(_shortcut_row(_("Open the emojis"), shortcut.Shortcut(shortcut.EMOJI, backend)),
-                               SCHEMA_ID, "show-emojis")
+        emoji_keys = shortcut.Shortcut(shortcut.EMOJI, backend)
+        emoji_row = _shortcut_row(_("Open the emojis"), emoji_keys)
+        section.add_reveal_row(emoji_row, SCHEMA_ID, "show-emojis")
         section.add_note(SHORTCUT_NOTES[backend.desktop]())
+
+        # Super+. comes with the emojis, the first time they're turned on.
+        def on_show_emojis(settings, key):
+            if settings.get_boolean(key):
+                emoji_keys.add_default(settings)
+                emoji_row.button.set_accelerator(emoji_keys.binding())
+        page.xclipy_settings = Gio.Settings.new(SCHEMA_ID)  # kept with the page, to hear changes
+        page.xclipy_settings.connect("changed::show-emojis", on_show_emojis)
     else:
         section.add_note(_("Set them in your desktop's keyboard settings: “xclipy --show” opens the "
                            "clipboard history and “xclipy --emoji” the emojis."))
@@ -96,9 +105,9 @@ def _clear_history(_button):
 def _shortcut_row(label, keys):
     row = SettingsWidget()
     row.pack_start(SettingsLabel(label), False, False, 0)
-    button = ShortcutButton(keys.binding())
-    button.connect("changed", lambda _b, accelerator: keys.set_binding(accelerator))
-    row.pack_end(button, False, False, 0)
+    row.button = ShortcutButton(keys.binding())
+    row.button.connect("changed", lambda _b, accelerator: keys.set_binding(accelerator))
+    row.pack_end(row.button, False, False, 0)
     return row
 
 
@@ -126,6 +135,11 @@ class ShortcutButton(Gtk.Button):
             self.set_label(Gtk.accelerator_get_label(key, mods) if key else self._accelerator)
         else:
             self.set_label(_("None"))
+
+    def set_accelerator(self, accelerator):
+        """Show another shortcut (changed elsewhere)."""
+        self._accelerator = accelerator
+        self._show()
 
     def _listen(self):
         self._listening = True

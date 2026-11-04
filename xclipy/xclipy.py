@@ -2,8 +2,8 @@
 """Xclipy: the clipboard history of the Cinnamon desktop.
 
 It runs from login without a window or a tray icon, keeps what is copied, and
-opens its overlay when its keyboard shortcuts run ``xclipy --show`` or, on
-the Emojis tab, ``xclipy --emoji``.
+opens its overlays when its keyboard shortcuts run ``xclipy --show`` (the
+clipboard history) or ``xclipy --emoji`` (the emojis).
 """
 
 import os
@@ -22,7 +22,8 @@ from xclipy.history import ClipboardHistory
 from xclipy.i18n import _
 from xclipy.passwords import Keyring
 from xclipy.paste import paste
-from xclipy.ui.overlay import Overlay, is_wayland
+from xclipy.placement import place
+from xclipy.ui.overlay import ClipboardOverlay, EmojiOverlay, is_wayland
 from xclipy.watcher import ClipboardWatcher
 
 PASTE_DELAY_MS = 150  # lets the focus go back to the application first
@@ -38,7 +39,7 @@ class XclipyApplication(Gtk.Application):
         self.history = None
         self.watcher = None
         self.focus = None
-        self.overlay = None
+        self.overlays = {}  # "clipboard" and "emoji", made when first opened
         self.settings_window = None
         self._terminal = False
         self.add_main_option(
@@ -75,9 +76,10 @@ class XclipyApplication(Gtk.Application):
         self.settings.connect("changed::enabled", self._on_enabled_changed)
         self.settings.connect("changed::save-pinned-passwords", lambda s, key: self.history.keep_pinned_passwords(
             Keyring() if s.get_boolean(key) else None))
-        # The helper in Cinnamon places the overlay at the mouse pointer, on X11 and
-        # Wayland alike: the window manager itself, like a right-click menu. On
-        # Wayland it also sees the copies and pastes; on X11 Xclipy does those itself.
+        # The helper in Cinnamon decides where the overlays open, at the mouse
+        # pointer, on X11 and Wayland alike: the window manager itself, like for a
+        # right-click menu. On Wayland it also sees the copies and pastes; on X11
+        # Xclipy does those itself.
         self.wayland = is_wayland(Gdk.Display.get_default())
         self.placer = self.helper = None
         if "X-Cinnamon" in os.environ.get("XDG_CURRENT_DESKTOP", "").split(":"):
@@ -89,10 +91,8 @@ class XclipyApplication(Gtk.Application):
         if self.helper is not None:
             self.helper.on_clipboard_changed = self.watcher.on_helper_copy
         self.focus = FocusTracker()
-        backend = shortcut.backend_for_desktop()
-        if backend is not None:
-            for kind in shortcut.KINDS:
-                shortcut.Shortcut(kind, backend).add_default(self.settings)
+        self._add_shortcuts()
+        self.settings.connect("changed::show-emojis", self._on_show_emojis_changed)
         for name, callback in (
             ("show", lambda *_args: self.toggle_overlay()),
             ("settings", lambda *_args: self.show_settings()),
@@ -119,6 +119,15 @@ class XclipyApplication(Gtk.Application):
     def do_activate(self):
         self.toggle_overlay()
 
+    def _add_shortcuts(self):
+        """The desktop's shortcuts, the first time: the emojis' only once they're on."""
+        backend = shortcut.backend_for_desktop()
+        if backend is None:
+            return
+        for kind in shortcut.KINDS:
+            if kind is not shortcut.EMOJI or self.settings.get_boolean("show-emojis"):
+                shortcut.Shortcut(kind, backend).add_default(self.settings)
+
     def show_settings(self):
         from xclipy.ui.settings_window import SettingsWindow  # only when asked for
         if self.settings_window is None:
@@ -126,27 +135,62 @@ class XclipyApplication(Gtk.Application):
             self.settings_window.connect("destroy", lambda _w: setattr(self, "settings_window", None))
         self.settings_window.present()
 
-    def toggle_overlay(self, tab="clipboard"):
-        """Open the overlay on a tab, switch to it, or close the overlay when it's on it."""
+    def toggle_overlay(self, kind="clipboard"):
+        """Open an overlay ("clipboard" or "emoji"), or close it when it's open."""
         if not self.settings.get_boolean("enabled"):
             return  # the shortcuts do nothing while the history is off
-        if tab == "emoji" and not self.settings.get_boolean("show-emojis"):
+        if kind == "emoji" and not self.settings.get_boolean("show-emojis"):
             return
-        if self.overlay is None:
-            self.overlay = Overlay(self, self.history, self.settings, self.choose,
-                                   lambda item: self.choose(item, then_paste=True),
-                                   self.choose_emoji)
-            self.history.on_changed = self.overlay.clipboard_page.refresh
-        if not self.overlay.get_visible():
-            # Asked now, while the application still has the keyboard focus.
-            self._terminal = self.focus.in_terminal()
-            self.overlay.popup(tab)
-            if self.placer is not None and self.placer.available:
-                self.placer.place_overlay()
-        elif self.overlay.tab != tab:
-            self.overlay.switch_to(tab)
-        else:
-            self.overlay.hide()
+        overlay = self._overlay(kind)
+        if overlay.get_visible():
+            overlay.hide()
+            return
+        self._hide_overlays()  # the other one
+        # Asked now, while the application still has the keyboard focus.
+        self._terminal = self.focus.in_terminal()
+        overlay.popup(self._position(overlay.size()))
+
+    def _overlay(self, kind):
+        if kind not in self.overlays:
+            if kind == "emoji":
+                self.overlays[kind] = EmojiOverlay(self, self.settings, self.choose_emoji)
+            else:
+                self.overlays[kind] = ClipboardOverlay(self, self.history, self.settings, self.choose,
+                                                       lambda item: self.choose(item, then_paste=True))
+                self.history.on_changed = self.overlays[kind].page.refresh
+        return self.overlays[kind]
+
+    def _position(self, size):
+        """Where an overlay opens, decided before it opens so it never moves.
+
+        Step one: the mouse pointer, and the side the overlay takes. In
+        Cinnamon the helper says (on Wayland only Cinnamon knows the pointer),
+        and on Wayland it then puts the overlay there itself as it opens: no
+        application can place its windows there. Returns (x, y) for Xclipy to
+        place it itself, or None.
+        """
+        if self.placer is not None and self.placer.available:
+            prepared = self.placer.prepare_overlay(size)
+            if self.wayland or prepared is None:
+                return None
+            return prepared[:2]
+        if self.wayland:
+            return None
+        display = Gdk.Display.get_default()
+        pointer = monitor = None
+        seat = display.get_default_seat()
+        if seat is not None and seat.get_pointer() is not None:
+            _screen, x, y = seat.get_pointer().get_position()
+            pointer = (x, y)
+            monitor = display.get_monitor_at_point(x, y)
+        monitor = monitor or display.get_primary_monitor() or display.get_monitor(0)
+        area = monitor.get_workarea()
+        x, y, _side = place(size, (area.x, area.y, area.width, area.height), pointer)
+        return x, y
+
+    def _hide_overlays(self):
+        for overlay in self.overlays.values():
+            overlay.hide()
 
     def choose(self, item, then_paste=None):
         """Copy a history item, and paste it if asked to (by default, as set)."""
@@ -162,7 +206,7 @@ class XclipyApplication(Gtk.Application):
         self._paste_after(None)
 
     def _paste_after(self, then_paste):
-        self.overlay.hide()
+        self._hide_overlays()
         if then_paste is None:
             then_paste = self.settings.get_boolean("paste-on-select")
         # xdotool can't press keys in other applications on Wayland: the helper can.
@@ -197,8 +241,16 @@ class XclipyApplication(Gtk.Application):
         return GLib.SOURCE_CONTINUE
 
     def _on_enabled_changed(self, settings, key):
-        if not settings.get_boolean(key) and self.overlay is not None:
-            self.overlay.hide()
+        if not settings.get_boolean(key):
+            self._hide_overlays()
+
+    def _on_show_emojis_changed(self, settings, key):
+        # Turned on, the settings add Super+. (the first time); turned off,
+        # the emoji overlay goes, and its memory with it.
+        if not settings.get_boolean(key):
+            emoji = self.overlays.pop("emoji", None)
+            if emoji is not None:
+                emoji.destroy()
 
     def _on_logout(self, _application):
         if self.settings.get_boolean("clear-on-logout"):

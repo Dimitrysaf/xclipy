@@ -1,8 +1,9 @@
-"""The overlay: a borderless window with the Clipboard and Emojis tabs.
+"""The overlays: borderless windows with the clipboard history, or the emojis.
 
-It opens at the bottom right of the mouse pointer (in the bottom right corner of
-the screen only without one), can be dragged by its empty parts, and closes when
-something is chosen, on Escape, or when it loses the focus.
+Each opens at the bottom right of the mouse pointer (in the bottom right corner
+of the screen only without one), where it was decided before it opened, and
+closes when something is chosen, on Escape, or when it loses the focus. It
+can't be moved. The emoji overlay is only made the first time it opens.
 """
 
 import gi
@@ -12,7 +13,6 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, GLib, Gtk
 
 from xclipy.i18n import _
-from xclipy.placement import place
 from xclipy.ui.clipboard_page import ClipboardPage
 from xclipy.ui.emoji_page import EmojiPage
 
@@ -21,12 +21,15 @@ WIDTH, HEIGHT = 360, 440
 # overlay only closes when the focus doesn't come back by then.
 FOCUS_LOST_MS = 200
 FADE_MS = 120  # the fade in when it opens, about as quick as a menu
+# The helper in Cinnamon finds the overlays by this title; nothing shows it.
+TITLE = "Xclipy"
 
 # The card is drawn as the theme draws a menu (Mint-Y: square, with a 1px border),
 # so its corners, border and background are the theme's; only a menu's outer margin
-# is dropped, as the window is exactly the card's size.
+# is dropped, as the window is exactly the card's size. Nothing in it drags the window.
 CSS = b"""
 window.xclipy-overlay { background-color: transparent; }
+window.xclipy-overlay, window.xclipy-overlay * { -GtkWidget-window-dragging: false; }
 window.xclipy-overlay .xclipy-card { margin: 0; }
 window.xclipy-overlay.xclipy-solid .xclipy-card { border-radius: 0; }
 .xclipy-emoji { font-size: 20px; }
@@ -49,11 +52,12 @@ def _server_time(gdk_window):
 
 
 class Overlay(Gtk.Window):
-    def __init__(self, application, history, settings, on_choose, on_paste, on_choose_emoji):
-        # The helper in Cinnamon finds the overlay by this title; nothing shows
-        # it, and screen readers say the accessible name.
-        super().__init__(application=application, title="Xclipy")
-        self.get_accessible().set_name(_("Clipboard history"))
+    """What both overlays share: no window bar, above the others, closing on its own."""
+
+    def __init__(self, application, name, page):
+        # Screen readers say the accessible name, not the title.
+        super().__init__(application=application, title=TITLE)
+        self.get_accessible().set_name(name)
         self.set_decorated(False)
         self.set_resizable(False)
         self.set_default_size(WIDTH, HEIGHT)
@@ -78,60 +82,52 @@ class Overlay(Gtk.Window):
         else:
             self.get_style_context().add_class("xclipy-solid")
 
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         card.get_style_context().add_class("menu")
         card.get_style_context().add_class("xclipy-card")
+        page.set_margin_top(8)
+        page.set_margin_bottom(6)
+        card.pack_start(page, True, True, 0)
+        card.show_all()
         self.add(card)
         self._card = card
         self._fade_id = 0
 
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.NONE, vexpand=True,
-                                margin_bottom=6)
-        self._settings = settings
-        self._editing = False
-        self.clipboard_page = ClipboardPage(history, settings, on_choose, on_paste)
-        self.emoji_page = EmojiPage(settings, on_choose_emoji)
-        self._stack.add_titled(self.clipboard_page, "clipboard", _("Clipboard"))
-        self._stack.add_titled(self.emoji_page, "emoji", _("Emojis"))
-        self._stack.connect("notify::visible-child-name", self._on_tab_changed)
-        self._switcher = Gtk.StackSwitcher(stack=self._stack, halign=Gtk.Align.CENTER, margin_top=8,
-                                           no_show_all=True)
-        card.pack_start(self._switcher, False, False, 0)
-        card.pack_start(self._stack, True, True, 0)
-        card.show_all()
-        settings.connect("changed::show-emojis", lambda *_args: self._show_tabs())
-        self._show_tabs()
-        self.clipboard_page.on_editing_changed = self._on_editing_changed
-        self.clipboard_page.on_menu_closed = self._after_menu
-        self.clipboard_page.on_drag = self.drag
-
         self.connect("key-press-event", self._on_key_press)
-        # A press that the items, buttons and search field don't take moves the overlay.
-        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-        self.connect("button-press-event", self._on_button_press)
         self._hide_source = 0
         self.connect("focus-out-event", self._on_focus_out)
         self.connect("focus-in-event", lambda *_args: self._cancel_hide())
         self.connect("hide", lambda *_args: self._cancel_hide())
         self.connect("delete-event", lambda *_args: self.hide() or True)
 
-    def popup(self, tab="clipboard"):
-        """Open on a tab ("clipboard" or "emoji") at the bottom right of the mouse pointer.
+    def size(self):
+        """The (width, height) it opens with: the content can ask for more."""
+        minimum, _natural = self.get_preferred_size()
+        return max(WIDTH, minimum.width), max(HEIGHT, minimum.height)
 
-        On X11 it moves itself there before it shows, so it doesn't appear elsewhere
-        first; the helper in Cinnamon then places it the same way, as the window
-        manager (on Wayland only the helper can: applications can't place windows).
+    def popup(self, position=None):
+        """Open at ``position``, (x, y) on the screen, decided before it opens.
+
+        Without one (on Wayland, where applications can't place their windows),
+        the window manager places it: the helper in Cinnamon, where Xclipy asked.
         """
-        display = self.get_display()
-        if not is_wayland(display):
-            self.move(*self._position(display))
-        self.clipboard_page.focus_first()
-        if self.tab == tab:
-            self._on_tab_changed(self._stack, None)  # start the tab afresh
-        self.tab = tab
+        if position is not None:
+            self.move(*position)
+        self.prepare()
         self._fade_in()
         self.show()
         self.present_with_time(_server_time(self.get_window()))
+
+    def prepare(self):
+        """Start afresh, before opening."""
+
+    def escape(self):
+        """Escape was pressed: close, unless the overlay has something to undo first."""
+        self.hide()
+
+    def menu_open(self):
+        """Whether one of its menus has the keyboard for now."""
+        return False
 
     def _fade_in(self):
         """Fade the content in. The window itself can't fade on Wayland, its content can."""
@@ -156,36 +152,8 @@ class Overlay(Gtk.Window):
             return GLib.SOURCE_REMOVE
         self._fade_id = self.add_tick_callback(tick)
 
-    def _position(self, display):
-        pointer = monitor = None
-        seat = display.get_default_seat()
-        if seat is not None and seat.get_pointer() is not None:
-            _screen, x, y = seat.get_pointer().get_position()
-            pointer = (x, y)
-            monitor = display.get_monitor_at_point(x, y)
-        monitor = monitor or display.get_primary_monitor() or display.get_monitor(0)
-        area = monitor.get_workarea()
-        minimum, _natural = self.get_preferred_size()  # the content can ask for more
-        size = (max(WIDTH, minimum.width), max(HEIGHT, minimum.height))
-        return place(size, (area.x, area.y, area.width, area.height), pointer)
-
-    def _on_button_press(self, _window, event):
-        # Only presses on the overlay's own background (around the tabs, its edges). A
-        # press in the list or on a button bubbles up here too, but there it must stay a
-        # click: once the window manager moves the window, the release never comes back.
-        if Gtk.get_event_widget(event) is not self:
-            return False
-        return self.drag(event)
-
-    def drag(self, event):
-        """Let the window manager move the overlay with the pointer, on X11 and Wayland alike."""
-        if event.button != Gdk.BUTTON_PRIMARY or event.type != Gdk.EventType.BUTTON_PRESS:
-            return False
-        self.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
-        return True
-
     def _on_focus_out(self, *_args):
-        if self.clipboard_page.menu_open:
+        if self.menu_open():
             return  # its menu took the keyboard for a moment
         if not self._hide_source:
             self._hide_source = GLib.timeout_add(FOCUS_LOST_MS, self._hide_now)
@@ -211,53 +179,36 @@ class Overlay(Gtk.Window):
             GLib.source_remove(self._hide_source)
             self._hide_source = 0
 
-    def switch_to(self, tab):
-        """Show another tab, and take the keyboard back from the shortcut."""
-        self._cancel_hide()
-        self.tab = tab
-        self.present_with_time(_server_time(self.get_window()))
-
-    @property
-    def tab(self):
-        return self._stack.get_visible_child_name()
-
-    @tab.setter
-    def tab(self, name):
-        self._stack.set_visible_child_name(name)
-
-    def _on_editing_changed(self, editing):
-        # The edit page has the whole overlay: no tabs, until Save or Cancel.
-        self._editing = editing
-        self._show_tabs()
-
-    def _show_tabs(self):
-        """The tabs, unless editing or with the emojis turned off (just the clipboard then)."""
-        emojis = self._settings.get_boolean("show-emojis")
-        self.emoji_page.set_visible(emojis)
-        if not emojis:
-            self.tab = "clipboard"
-        shown = emojis and not self._editing
-        self._switcher.set_visible(shown)
-        self._switcher.foreach(lambda button: button.show())
-        self._stack.set_margin_top(0 if shown else 8)
-
-    def _on_tab_changed(self, stack, _param):
-        if stack.get_visible_child_name() == "emoji":
-            self.emoji_page.prepare()
-        else:
-            self.clipboard_page.focus_first()
-
     def _on_key_press(self, _window, event):
-        if event.keyval == Gdk.KEY_Escape:
-            if self.clipboard_page.editing:
-                self.clipboard_page.cancel_edit()
-            elif not self.clipboard_page.clear_search():
-                self.hide()
-            return True
-        if self._settings.get_boolean("show-emojis") and event.state & Gdk.ModifierType.CONTROL_MASK and event.keyval in (
-                Gdk.KEY_Tab, Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Page_Down, Gdk.KEY_Page_Up):
-            # Ctrl+Tab and Ctrl+Page Up/Down switch tabs, like in a browser.
-            other = "emoji" if self._stack.get_visible_child_name() == "clipboard" else "clipboard"
-            self._stack.set_visible_child_name(other)
-            return True
-        return False
+        if event.keyval != Gdk.KEY_Escape:
+            return False
+        self.escape()
+        return True
+
+
+class ClipboardOverlay(Overlay):
+    def __init__(self, application, history, settings, on_choose, on_paste):
+        self.page = ClipboardPage(history, settings, on_choose, on_paste)
+        super().__init__(application, _("Clipboard history"), self.page)
+        self.page.on_menu_closed = self._after_menu
+
+    def prepare(self):
+        self.page.focus_first()
+
+    def escape(self):
+        if self.page.editing:
+            self.page.cancel_edit()
+        elif not self.page.clear_search():
+            self.hide()
+
+    def menu_open(self):
+        return self.page.menu_open
+
+
+class EmojiOverlay(Overlay):
+    def __init__(self, application, settings, on_choose):
+        self.page = EmojiPage(settings, on_choose)
+        super().__init__(application, _("Emojis"), self.page)
+
+    def prepare(self):
+        self.page.prepare()

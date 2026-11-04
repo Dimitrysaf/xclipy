@@ -1,4 +1,4 @@
-"""The Emojis tab: emoji by group, the recently used ones, and a search."""
+"""The emoji overlay's page: emoji by group, the recently used ones, and a search."""
 
 import gi
 
@@ -52,7 +52,7 @@ class EmojiPage(Gtk.Box):
             first = first or button
         self.pack_start(groups, False, False, 0)
 
-        # At the bottom, the same as the Clipboard tab's.
+        # At the bottom, the same as the clipboard overlay's.
         bar = SearchBar()
         bar.set_margin_top(0)  # this page spaces its parts already
         self._search = bar.entry
@@ -68,7 +68,7 @@ class EmojiPage(Gtk.Box):
             yield index, emoji.group_symbol(index), emoji.group_name(index)
 
     def prepare(self):
-        """Called when the tab is shown: start from the recently used ones, if any."""
+        """Called when the overlay opens: start from the recently used ones, if any."""
         self._search.set_text("")
         group = RECENT if self._settings.get_strv("recent-emoji") else 0
         if self._group_buttons[group].get_active():
