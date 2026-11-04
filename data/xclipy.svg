@@ -1,35 +1,59 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- Mint-Y's app icon frame (a 220 px rounded square inset 18 px, a vertical gradient,
-       a dark ~70% outline, a faint inner highlight, a 1-2 px shadow) in Mint-Y's own
-       clipboard blue. The clipboard is drawn as an object, as in System Settings'
-       Preferences icons: a white sheet with a soft shadow and a dark clip. -->
+  <!-- Mint-Y's mintreport icon (a clipboard on its app frame), with a pen in place of the
+       exclamation mark and the blue gradient of System Settings' Panel icon. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="18" x2="0" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#31bdee"/>
-      <stop offset="1" stop-color="#1a9dcb"/>
+      <stop offset="0" stop-color="#7ac7eb"/>
+      <stop offset="1" stop-color="#2277e3"/>
     </linearGradient>
-    <linearGradient id="sheet" x1="0" y1="60" x2="0" y2="208" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#e4e4e4"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="4"/>
-    </filter>
-    <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+    <clipPath id="paper">
+      <rect x="48" y="48" width="160" height="160" rx="14"/>
+    </clipPath>
+    <mask id="ring" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
       <rect width="256" height="256" fill="#fff"/>
-      <circle cx="128" cy="54" r="7" fill="#000"/>
+      <circle cx="127.5" cy="41.5" r="4.5" fill="#000"/>
     </mask>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
   </defs>
-  <rect x="18" y="20" width="220" height="220" rx="47" fill="#000" fill-opacity=".18"/>
-  <rect x="19" y="19" width="218" height="218" rx="46" fill="url(#bg)" stroke="#154e61" stroke-opacity=".7" stroke-width="2"/>
-  <rect x="21" y="21" width="214" height="214" rx="44" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
 
-  <!-- The sheet, its shadow, and three lines of text. -->
-  <rect x="68" y="66" width="120" height="146" rx="12" fill="#000" fill-opacity=".22" filter="url(#soft)"/>
-  <rect x="66" y="60" width="124" height="148" rx="12" fill="url(#sheet)"/>
-  <rect x="88" y="104" width="80" height="11" rx="5.5" fill="#a9a9a9"/>
-  <rect x="88" y="130" width="80" height="11" rx="5.5" fill="#a9a9a9"/>
-  <rect x="88" y="156" width="50" height="11" rx="5.5" fill="#a9a9a9"/>
-  <!-- The clip, holding the sheet. -->
-  <rect x="96" y="42" width="64" height="34" rx="9" fill="#393939" mask="url(#hole)"/>
+  <!-- The frame. -->
+  <rect x="18" y="20" width="220" height="220" rx="47" fill="#000" fill-opacity=".18"/>
+  <rect x="19" y="19" width="218" height="218" rx="46" fill="url(#bg)" stroke="#173f6b" stroke-opacity=".7" stroke-width="2"/>
+  <rect x="21" y="21" width="214" height="214" rx="44" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>
+
+  <!-- The paper, its shadow, its grid and its margin. -->
+  <rect x="48" y="49" width="160" height="160" rx="14" fill="#000" fill-opacity=".3"/>
+  <rect x="48" y="48" width="160" height="160" rx="14" fill="#fff"/>
+  <g clip-path="url(#paper)" stroke-width="1">
+    <path d="M48 81.5h160M48 111.5h160M48 143.5h160M48 174.5h160" stroke="#eaeaea"/>
+    <path d="M81.5 48v160" stroke="#f6dcda"/>
+  </g>
+
+  <!-- The clip and its ring. -->
+  <g fill="#c3c8cd" mask="url(#ring)">
+    <circle cx="127.5" cy="41.5" r="11"/>
+    <rect x="87" y="42" width="80" height="21" rx="4"/>
+  </g>
+  <rect x="88" y="63" width="78" height="1" fill="#b3b3b3"/>
+
+  <!-- The pen, writing on the paper. -->
+  <g transform="translate(131 125) rotate(-45)">
+    <g filter="url(#soft)" fill="#000" fill-opacity=".2" transform="translate(4 5)">
+      <path d="M-64 0L-46-11H58a4 4 0 0 1 4 4V7a4 4 0 0 1-4 4H-46Z"/>
+    </g>
+    <!-- Nib and its metal cone. -->
+    <path d="M-46-11L-64 0L-46 11Z" fill="#8c939a"/>
+    <path d="M-55.6-5.1L-64 0L-55.6 5.1Z" fill="#3c4045"/>
+    <!-- Grip. -->
+    <rect x="-46" y="-11" width="12" height="22" fill="#c3c8cd"/>
+    <rect x="-46" y="0" width="12" height="11" fill="#aeb4ba"/>
+    <!-- Body, lit from above. -->
+    <path d="M-34-11H52V11H-34Z" fill="#e22c1e"/>
+    <path d="M-34 0H52V11H-34Z" fill="#c4241a"/>
+    <!-- Cap at the end, with its clip. -->
+    <path d="M52-11h6a4 4 0 0 1 4 4V7a4 4 0 0 1-4 4h-6Z" fill="#a51d13"/>
+    <rect x="18" y="-14" width="34" height="5" rx="2.5" fill="#c3c8cd"/>
+  </g>
 </svg>

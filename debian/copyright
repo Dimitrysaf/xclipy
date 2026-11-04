@@ -11,6 +11,13 @@ License: Unicode-3.0
  Generated from the Unicode emoji data (emoji-test.txt), which is distributed
  under the Unicode License v3: https://www.unicode.org/license.txt
 
+Files: data/xclipy.svg
+Copyright: 2026 Dimitrysaf <demetresmeliates+github@gmail.com>
+           Clement Lefebvre <root@linuxmint.com>
+License: GPL-3+
+ Based on the mintreport icon of the Mint-Y icon theme (mint-y-icons), with a
+ pen in place of its exclamation mark and the colours of its cs-panel icon.
+
 Files: LICENSES/GPL-3.0.txt
 Copyright: Free Software Foundation, Inc.
 License: GPL-3+
