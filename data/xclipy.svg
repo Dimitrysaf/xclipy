@@ -1,13 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <!-- Mint-Y's mintreport icon (a clipboard on its app frame), with a pen in place of the
-       exclamation mark and the blue gradient of System Settings' Panel icon. -->
+       exclamation mark and a deeper blue gradient than System Settings' Panel icon,
+       to stand out from the white paper. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="18" x2="0" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7ac7eb"/>
-      <stop offset="1" stop-color="#2277e3"/>
+      <stop offset="0" stop-color="#4a9eea"/>
+      <stop offset="1" stop-color="#1c5fc4"/>
     </linearGradient>
     <clipPath id="paper">
-      <rect x="48" y="48" width="160" height="160" rx="14"/>
+      <rect x="48" y="48" width="160" height="160" rx="34"/>
     </clipPath>
     <mask id="ring" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
       <rect width="256" height="256" fill="#fff"/>
@@ -16,16 +17,20 @@
     <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="3"/>
     </filter>
+    <filter id="edge" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur stdDeviation="1"/>
+    </filter>
   </defs>
 
-  <!-- The frame. -->
-  <rect x="18" y="20" width="220" height="220" rx="47" fill="#000" fill-opacity=".18"/>
-  <rect x="19" y="19" width="218" height="218" rx="46" fill="url(#bg)" stroke="#173f6b" stroke-opacity=".7" stroke-width="2"/>
-  <rect x="21" y="21" width="214" height="214" rx="44" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="2"/>
+  <!-- The frame, rounded as Mint-Y's: a 1 px dark outline, a light line inside its top
+       edge, a short soft shadow. -->
+  <rect x="18" y="19.5" width="220" height="220" rx="50" fill="#000" fill-opacity=".35" filter="url(#edge)"/>
+  <rect x="18.5" y="18.5" width="219" height="219" rx="49.5" fill="url(#bg)" stroke="#123a73" stroke-opacity=".75"/>
+  <rect x="19.5" y="19.5" width="217" height="217" rx="48.5" fill="none" stroke="#fff" stroke-opacity=".25"/>
 
   <!-- The paper, its shadow, its grid and its margin. -->
-  <rect x="48" y="49" width="160" height="160" rx="14" fill="#000" fill-opacity=".3"/>
-  <rect x="48" y="48" width="160" height="160" rx="14" fill="#fff"/>
+  <rect x="48" y="49" width="160" height="160" rx="34" fill="#000" fill-opacity=".3"/>
+  <rect x="48" y="48" width="160" height="160" rx="34" fill="#fff"/>
   <g clip-path="url(#paper)" stroke-width="1">
     <path d="M48 81.5h160M48 111.5h160M48 143.5h160M48 174.5h160" stroke="#eaeaea"/>
     <path d="M81.5 48v160" stroke="#f6dcda"/>
